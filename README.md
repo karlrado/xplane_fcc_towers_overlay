@@ -162,8 +162,8 @@ python build_overlay.py --dry-run                      :: report the plan only
 python build_overlay.py -h                             :: all options
 ```
 
-Requires `DSFTool.exe` (X-Plane SDK / XP12 Tools) on your PATH, or pass
-`--dsftool <path>`.
+Requires `DSFTool.exe` (part of the X-Plane SDK,
+<https://developer.x-plane.com>) on your PATH, or pass `--dsftool <path>`.
 
 ### Install + test
 

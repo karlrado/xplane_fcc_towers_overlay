@@ -184,8 +184,9 @@ def find_dsftool(explicit):
         return tool
     raise SystemExit(
         "Could not find DSFTool on the PATH.\n"
-        "Get DSFTool.exe (X-Plane SDK / XP12 Tools) and add its folder to\n"
-        "your PATH, or pass an explicit path with --dsftool <path>."
+        "Get DSFTool.exe from https://developer.x-plane.com (part of the\n"
+        "X-Plane SDK) and add its folder to your PATH, or pass an explicit\n"
+        "path with --dsftool <path>."
     )
 
 
