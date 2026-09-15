@@ -42,7 +42,8 @@ DSFTool's text format does not preserve a per-object *scale*, so size variety
 is achieved by object choice rather than scaling. Swap the ``TOWER_OBJECTS``
 table for custom/public-domain models later.
 
-Standard library only. Requires ``DSFTool.exe`` (X-Plane SDK / XP12 Tools).
+Standard library only. Requires ``DSFTool.exe`` (X-Plane SDK / XP12 Tools)
+on the PATH.
 
 Examples
 --------
@@ -172,25 +173,19 @@ def region_text(props, placements):
 # DSFTool discovery / conversion
 # ---------------------------------------------------------------------------
 def find_dsftool(explicit):
+    """Locate DSFTool: an explicit --dsftool path wins, otherwise it must
+    be runnable from the PATH."""
     if explicit:
         if os.path.isfile(explicit):
             return explicit
         raise SystemExit(f"--dsftool not found: {explicit}")
-    candidates = [
-        r"\\TRUENAS\FlightSim\XP12 Tools\DSFTool.exe",
-        r"F:\XP12 Tools\DSFTool.exe",
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "DSFTool.exe"),
-        "DSFTool.exe",
-    ]
-    for c in candidates:
-        try:
-            if os.path.isfile(c):
-                return c
-        except OSError:
-            pass
+    tool = shutil.which("DSFTool.exe") or shutil.which("DSFTool")
+    if tool:
+        return tool
     raise SystemExit(
-        "Could not find DSFTool.exe. Pass --dsftool <path>.\n"
-        "Looked in:\n  " + "\n  ".join(candidates)
+        "Could not find DSFTool on the PATH.\n"
+        "Get DSFTool.exe (X-Plane SDK / XP12 Tools) and add its folder to\n"
+        "your PATH, or pass an explicit path with --dsftool <path>."
     )
 
 

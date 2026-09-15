@@ -162,8 +162,7 @@ python build_overlay.py --dry-run                      :: report the plan only
 python build_overlay.py -h                             :: all options
 ```
 
-Requires `DSFTool.exe` — it is found automatically at
-`\\TRUENAS\FlightSim\XP12 Tools\DSFTool.exe` (or `F:\XP12 Tools`), or pass
+Requires `DSFTool.exe` (X-Plane SDK / XP12 Tools) on your PATH, or pass
 `--dsftool <path>`.
 
 ### Install + test
