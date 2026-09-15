@@ -1,0 +1,8 @@
+# Regenerated data / build output (see README: quick start + build)
+active_antennas.csv
+output/
+tmp/
+
+# Python
+__pycache__/
+*.pyc

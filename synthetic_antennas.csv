@@ -1,0 +1,34 @@
+latitude,longitude,height_structure_m,state,structure_type,object_path,note
+40.0280000,-104.6720000,8,CO,SHOWROOM,lib/constructions/antennas/antenna_8m_01.obj,row=antenna_8m shapes col=1 antenna_8m_01
+40.0280000,-104.6702352,8,CO,SHOWROOM,lib/constructions/antennas/antenna_8m_02.obj,row=antenna_8m shapes col=2 antenna_8m_02
+40.0280000,-104.6684704,8,CO,SHOWROOM,lib/constructions/antennas/antenna_8m_03.obj,row=antenna_8m shapes col=3 antenna_8m_03
+40.0280000,-104.6667056,8,CO,SHOWROOM,lib/constructions/antennas/antenna_8m_04.obj,row=antenna_8m shapes col=4 antenna_8m_04
+40.0280000,-104.6649408,8,CO,SHOWROOM,lib/constructions/antennas/antenna_8m_05.obj,row=antenna_8m shapes col=5 antenna_8m_05
+40.0280000,-104.6631761,8,CO,SHOWROOM,lib/constructions/antennas/antenna_8m_06.obj,row=antenna_8m shapes col=6 antenna_8m_06
+40.0302523,-104.6720000,5,CO,SHOWROOM,lib/constructions/antennas/antenna_5m_01.obj,row=antenna_5m shapes col=1 antenna_5m_01
+40.0302523,-104.6702352,5,CO,SHOWROOM,lib/constructions/antennas/antenna_5m_02.obj,row=antenna_5m shapes col=2 antenna_5m_02
+40.0302523,-104.6684704,5,CO,SHOWROOM,lib/constructions/antennas/antenna_5m_03.obj,row=antenna_5m shapes col=3 antenna_5m_03
+40.0302523,-104.6667056,5,CO,SHOWROOM,lib/constructions/antennas/antenna_5m_04.obj,row=antenna_5m shapes col=4 antenna_5m_04
+40.0302523,-104.6649408,5,CO,SHOWROOM,lib/constructions/antennas/antenna_5m_05.obj,row=antenna_5m shapes col=5 antenna_5m_05
+40.0302523,-104.6631761,5,CO,SHOWROOM,lib/constructions/antennas/antenna_5m_06.obj,row=antenna_5m shapes col=6 antenna_5m_06
+40.0325045,-104.6720000,10,CO,SHOWROOM,lib/constructions/antennas/comm_tower_10m_1.obj,row=comm towers (height ramp) col=1 ct10
+40.0325045,-104.6702352,12,CO,SHOWROOM,lib/constructions/antennas/comm_tower_12m_1.obj,row=comm towers (height ramp) col=2 ct12
+40.0325045,-104.6684704,15,CO,SHOWROOM,lib/constructions/antennas/comm_tower_15m_1.obj,row=comm towers (height ramp) col=3 ct15
+40.0325045,-104.6667056,25,CO,SHOWROOM,lib/constructions/antennas/comm_tower_25m_1.obj,row=comm towers (height ramp) col=4 ct25
+40.0325045,-104.6649408,25,CO,SHOWROOM,lib/constructions/antennas/comm_tower_25m_3.obj,row=comm towers (height ramp) col=5 ct25v3
+40.0347568,-104.6720000,50,CO,SHOWROOM,/lib/global8/us/feat_Smokestack_100_100_400r50.obj,row=smokestacks (height ramp) col=1 ss50
+40.0347568,-104.6702352,100,CO,SHOWROOM,/lib/global8/us/feat_Smokestack_100_100_400r100.obj,row=smokestacks (height ramp) col=2 ss100
+40.0347568,-104.6684704,200,CO,SHOWROOM,/lib/global8/us/feat_Smokestack_100_100_400r200.obj,row=smokestacks (height ramp) col=3 ss200
+40.0347568,-104.6667056,400,CO,SHOWROOM,/lib/global8/us/feat_Smokestack_100_100_400r400.obj,row=smokestacks (height ramp) col=4 ss400
+40.0370090,-104.6720000,50,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_5_5_650r50.obj,row=radio 5x5 (height ramp) col=1 r55_50
+40.0370090,-104.6702352,100,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_5_5_650r100.obj,row=radio 5x5 (height ramp) col=2 r55_100
+40.0370090,-104.6684704,200,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_5_5_650r200.obj,row=radio 5x5 (height ramp) col=3 r55_200
+40.0370090,-104.6667056,300,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_5_5_650r300.obj,row=radio 5x5 (height ramp) col=4 r55_300
+40.0370090,-104.6649408,450,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_5_5_650r450.obj,row=radio 5x5 (height ramp) col=5 r55_450
+40.0370090,-104.6631761,650,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_5_5_650r650.obj,row=radio 5x5 (height ramp) col=6 r55_650
+40.0392613,-104.6720000,50,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_10_10_650r50.obj,row=radio 10x10 (height ramp) col=1 r1010_50
+40.0392613,-104.6702352,100,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_10_10_650r100.obj,row=radio 10x10 (height ramp) col=2 r1010_100
+40.0392613,-104.6684704,200,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_10_10_650r200.obj,row=radio 10x10 (height ramp) col=3 r1010_200
+40.0392613,-104.6667056,300,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_10_10_650r300.obj,row=radio 10x10 (height ramp) col=4 r1010_300
+40.0392613,-104.6649408,450,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_10_10_650r450.obj,row=radio 10x10 (height ramp) col=5 r1010_450
+40.0392613,-104.6631761,650,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_10_10_650r650.obj,row=radio 10x10 (height ramp) col=6 r1010_650
