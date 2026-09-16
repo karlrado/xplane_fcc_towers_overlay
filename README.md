@@ -12,7 +12,7 @@ tower heights.
 | `active_antennas.csv` | Output: one row per active antenna coordinate (~164k rows) |
 | `build_overlay.py` | Phase 2: turns the CSV into an X-Plane 12 overlay scenery pack |
 | `output/FCC_Towers/` | Phase 2 output: the scenery pack (copy into `C:\X-Plane 12\Custom Scenery`) |
-| `synthetic_antennas.csv` | Showroom input: a small grid of sample tower objects near Erie, CO |
+| `synthetic_antennas.csv` | Showroom input: a small grid of sample tower objects near Akron, CO |
 | `output/FCC_TowerShowroom/` | Showroom scenery pack built from that grid (`make_showroom.py` generates the CSV) |
 | `tmp/` | Cache for downloaded zips + DSF text staging (auto-deleted after a build) |
 | `doc/pubacc_asr_intro.pdf`, `doc/patower-4.pdf`, `doc/asr_codes.pdf` | FCC reference documents (see below) |
@@ -225,6 +225,71 @@ towers; `antenna_5m_*` / `antenna_8m_*` are also available via the
   of Guinea.
 - Alaska (1,284 points at lat 50–70) and other outlying territories are
   legitimate and included.
+
+## Showroom (object test gallery)
+
+`make_showroom.py` + `build_overlay.py` build `output/FCC_TowerShowroom`: a
+fixed grid of **every stock antenna object** the sim can offer, at their true
+heights, standing on a solid-white plinth near Akron, CO. The point is a
+permanent place to judge placeholder styles and heights in flight — and
+later, candidate custom/public-domain models — without hunting real
+towers. It is placed through the same `object_path` column as custom
+models, so it is independent of the type/height selection rules.
+
+**Layout** — SE corner at 40.1932349, −103.2108206; rows run north at
+125 m spacing, columns run west at 125 m (ragged on the west; a road just
+east of the first column lines up with every row's start). The white plinth
+extends 125 m beyond the grid on all sides:
+
+| Row (S→N) | Contents |
+|---|---|
+| 1 | `antenna_5m` styles 01…09 (5 m) |
+| 2 | `antenna_8m` styles 01…06 (8 m) |
+| 3 | `comm_tower` 10 m styles 1…3 |
+| 4 | `comm_tower` 12/15/25 m styles (12–25 m) |
+| 5 | radio towers r50 r100 r140 r200 r250 r300 (50–300 m) |
+| 6 | `antenna_100m` dish style (100 m) |
+
+The stock smokestack is intentionally absent: it is a DSF-700 object and
+X-Plane 12 does not render it. The `5×5`/`10×10` radio series export
+the same physical files, so they would look identical. Full rationale is in
+the `make_showroom.py` header.
+
+**Build:**
+
+```bat
+python make_showroom.py                     :: regenerate synthetic_antennas.csv
+python build_overlay.py --csv synthetic_antennas.csv ^
+    --out output\FCC_TowerShowroom --plinth-z 1
+```
+
+(`--plinth-z 1` merely switches the draped white plinth on; the polygon
+drapes onto the terrain mesh.)
+
+**Install:**
+
+```bat
+xcopy /e /i output\FCC_TowerShowroom "C:\X-Plane 12\Custom Scenery\FCC_TowerShowroom"
+```
+
+**Uninstall:**
+
+```bat
+rd /s /q "C:\X-Plane 12\Custom Scenery\FCC_TowerShowroom"
+```
+
+Then remove the `FCC_TowerShowroom` line from
+`C:\X-Plane 12\Custom Scenery\scenery_packs.ini` (with X-Plane closed).
+
+**Viewing:** depart **KAKO (Akron/Colorado-Yampa)** and fly **north** about
+8 nm (15 km). The white plinth rectangle appears over the fields north of
+the airport; the object grid stands on it (row 1 at the south end, row 5's
+300 m radio tower is the landmark). Fly low — a few hundred feet AGL —
+to judge the small rows (1–4).
+
+As with `FCC_Towers`: if the objects do not appear, make sure the
+`FCC_TowerShowroom` entry sits **above (before) the simHeaven entries** in
+`scenery_packs.ini` (same overlay conflict, silent failure).
 
 ## Notes / known quirks
 
