@@ -121,10 +121,10 @@ def region_for(lat, lon):
     def name(c_lat, c_lon):
         # X-Plane region name: lat sign is explicit; the separator '-' means
         # west and '+' means east, followed by the longitude magnitude.
-        lat_part = f"+{c_lat}" if c_lat >= 0 else f"-{-c_lat}"
+        lat_part = ("+" if c_lat >= 0 else "-") + f"{abs(c_lat):02d}"
         if c_lon < 0:
-            return f"{lat_part}-{abs(c_lon)}"   # e.g. +40-110 (west)
-        return f"{lat_part}+{c_lon}"            # e.g. +40+110 (east)
+            return f"{lat_part}-{abs(c_lon):03d}"   # e.g. +40-110 (west)
+        return f"{lat_part}+{abs(c_lon):03d}"       # e.g. +40+110 (east)
 
     props = dict(west=s_lon, east=s_lon + 1, south=s_lat, north=s_lat + 1)
     return name(s_lat, s_lon), name(b_lat, b_lon), props

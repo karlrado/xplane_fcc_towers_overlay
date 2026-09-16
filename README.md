@@ -119,7 +119,9 @@ scenery pack that draws a placeholder tower object at every antenna location.
 
 **How it works:** antennas are grouped into X-Plane 1° sub-regions (files like
 `+40-101.dsf`) inside 10° big-region folders, matching exactly what World
-Editor emits. Each region is written as a DSF *text* file (with
+Editor emits. Region names are zero-padded to X-Plane's convention
+(latitude 2 digits, longitude 3: `+20-090`, `+00+010`) — X-Plane matches
+folder names as literal strings, so `+20-90` would never be found. Each region is written as a DSF *text* file (with
 `PROPERTY sim/overlay 1` so it renders above the terrain as an overlay) and
 converted to X-Plane 12's native binary (`XPLNEDSF` magic) with Laminar's
 `DSFTool.exe --text2dsf`. No binary is written by hand.
