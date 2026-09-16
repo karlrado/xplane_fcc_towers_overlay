@@ -1,0 +1,27 @@
+# DSF reference material
+
+Reference material for building and debugging the X-Plane 12 DSF overlay in
+`build_overlay.py`. Kept here so the project is self-documenting and the
+references survive cleanup of machine-local scratch folders.
+
+## Files
+
+| File | What it is |
+|---|---|
+| `dsf_spec.txt` | Laminar's **DSF File Format Specification** (readable text). The primary reference for atom/property/command/point-pool layout. |
+| `kbd_dsf2text_reference.txt` | `DSFTool --dsf2text` output of the stock **KBDL** airport DSF — the authoritative example of the *text* grammar we emit (OBJECT_DEF, OBJECT, POLYGON_DEF, `BEGIN_POLYGON <def> 255 2`, `POLYGON_POINT <lon> <lat>`). |
+| `all_exports.txt` | A dump of the `EXPORT` lines from the default-scenery library files. Use it to look up exact object resource paths and to confirm a `lib/…` string matches an `EXPORT` name byte-for-byte (X-Plane does not normalize these). |
+| `source/DSFDefs.h` | Atom IDs, command IDs, header/footer structs (from Laminar's open-source DSF library). |
+| `source/DSFPointPool.cpp` / `.h` | Point-pool implementation — reference for how 16-bit step pools encode lon/lat/elevation. |
+| `source/README.dsf` | Laminar's DSF module README. |
+| `source/DSF2Text.cpp` | **Text-grammar authority**: the exact `--dsf2text` / `--text2dsf` line formats (`BEGIN_POLYGON %d %d %d`, `POLYGON_POINT %lf …`, winding keywords). |
+| `source/README.dsf2text` | DSF2Text tool README. |
+
+## Provenance
+
+- `dsf_spec.*`, `DSFDefs.h`, `DSFPointPool.*`, `DSF2Text.cpp`, and the two
+  READMEs are from Laminar Research's open-source X-Plane tooling
+  (`xptools`) and the published DSF spec.
+- `kbd_dsf2text_reference.txt` and `all_exports.txt` were generated on the
+  build machine from the installed X-Plane 12 default scenery (KBDL airport
+  pack and the library `EXPORT` tables).

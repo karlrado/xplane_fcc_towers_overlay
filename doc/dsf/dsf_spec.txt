@@ -1,0 +1,827 @@
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+ DSF File Format Specification - X-Plane Developer 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+
+ 
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+ 
+ 
+ 
+ ● 
+ ● 
+ ● 
+ ● 
+ ● 
+ ● 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ Blog 
+ Scenery Tools 
+ 
+ Blender 
+ Command-Line Tools 
+ DataRefEditor 
+ MeshTool 
+ Substance Painter 
+ WorldEditor (WED) 
+ 
+ 
+ Videos 
+ 
+ 2D Panels & Generic Instruments 
+ Creating Airports with WorldEditor 
+ Substance Painter Tutorial 
+ 
+ 
+ Documentation 
+ 
+ Air Traffic Control (ATC) 
+ Aircraft 
+ FMOD Sound 
+ Modeling 
+ Plugins 
+ Scenery 
+ Web APIs 
+ Weather 
+ Data Development 
+ File Format Specifications 
+ Requests for Comment 
+ Datarefs 
+ 
+ 
+ More 
+ 
+ X-Plane bug database 
+ Scenery Tools Bug Database 
+ Paint kits 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ Search 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ DSF File Format Specification 
+ Last updated October 3, 2019 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ Revision History:
+ 2/12/12 Updated for X-Plane 10
+ 6/ 2/10 Updated for Wiki
+ 11/12/06 Fixed incorrect size of counts for triangle primitives
+ 5/08/05 Update for object prioritization
+ 1/19/04 Initial Draft 
+ DSF Overview 
+ The Distribution Scenery Format (DSF) is the file format for scenery in X-Plane 8 and 9. A DSF file describes the appearance and some physical properties of a 1×1 degree section of the earth (or another planet). 
+ This section describes the high level concepts of DSF. The DSF Specification section describes the file format precisely on a byte-by-byte basis. 
+ This specification mentions cases where X-Plane deviates from the abstract DSF specification, or imposes further limitations. 
+ DSF as Part of the Scenery System 
+ Like the X-Plane 7 scenery system, X-Plane 8 and 9 scenery comes in packages consisting of a series of DSF files covering 1×1 degree surfaces, as well as a number of bitmap files and other helper text files such as objects. 
+ Collectively the bitmap and text files that are referenced by DSF files are known as graphic resources . 
+ DSF (Distribution Scenery Format) files contain compressed scenery data optimized for X-Plane. 
+ Projection and Coordinates 
+ DSF files represent locations on the Earth via degrees of latitude and longitude horizontally and meters relative to mean sea level vertically. 
+ The Earth is approximated as the WGS84 ellipsoid. 
+ All DSF coordinates are stored as sets of fixed point integers that are scaled by 32-bit floating point numbers. This math is done in 64-bit floating point precision. Points are translated to a local Cartesian coordinate system before geometry is constructed. This means that a straight line between two points in a DSF file will be straight in 3-d space, not in the geographic coordinate space of the DSF file (which is curved). 
+ Properties 
+ The metadata section of a DSF file contains a number of properties, consisting of a string name and a string value. Property names are hierarchical, with the ‘/’ character reserved for hierarchy specification. 
+ Compression and File Hashing 
+ DSF files are not internally compressed. Client applications may choose to support reading and writing of compressed DSF files, and can distinguish between a compressed vs. uncompressed DSF file by the cookie at the beginning of the file – XPLANE vs. PK or 7Z for example. 
+ X-PLANE NOTE: X-Plane 9 does not support reading compressed DSF files.  X-Plane 10 supports uncompressed and 7Z-compressed DSF files, with the global scenery distributed in 7Z-compressed format. 
+ DSF files contain a 128-bit MD5 hash at the end of the file describing the previous contents of the file. This allows X-Plane or other programs to quickly detect whether a DSF file has been modified and rebuild caches as necessary. 
+ Compatibility Goals 
+ DSF files are meant to be backward compatible but not forward compatible. New features are added via new atoms, new commands, and extensions to the definition file formats. New programs can identify different versions of DSF, and generally a program that can read the current DSF version will be able to read all older DSF versions without modification. Older programs will not be able to read newer versions of DSF. 
+ Note: Conceptually forward compatibility doesn’t make sense for scenery files. Consider a new scenery file that uses a new feature to represent a section of the world. If the old reader skips the new data then that part of the world will simply be missing or partially rendered. There is a data consistency problem with forward compatibility. 
+ Definition Files and Building Blocks 
+ A DSF file is essentially a 3-d model of a section of the earth, consisting of textured triangles and other polygons, with associated physical properties. However, specifying the entire Earth as triangles would make DSF files prohibitively large. Instead, DSF provides four types of building blocks from which models are built: 
+ 
+ Mesh Patches. The surface of the earth is created via a series of 3-d triangles. The appearance of these triangles is defined by a terrain type 
+ Objects. A 3-d model can be placed on the surface of the earth (as specified by the mesh) and rotated. 
+ Polygons. A polygon can be extruded to form a building or filled to form a forest. 
+ Vectors. A vector network can be extruded to form a transportation network, etc. 
+ Raster Data. Starting with X-Plane 10, individual raster layers (2-d arrays of numeric values) can be saved directly into a DSF 
+ 
+ For each type of building block, a definition file specifies how that building block will be rendered. Definition files are placed in the scenery package with the DSF files. 
+ Mesh Patches 
+ The DSF format does not dictate a particular configuration for the terrain mesh. Instead the mesh is a loose set of triangles that X-Plane indexes in memory. The mesh is divided into patches, or clusters of nearby triangles with the same terrain type. Each patch in turn may have multiple levels of detail (LOD), or versions of the terrain appropriate for different distances. 
+ Mesh patches use a terrain type file to define their texture. The terrain type defines the texture(s) to be used for the texture, and may also optionally provide resolution information for projecting the texture onto the triangles or other texture processing information. 
+ Mesh triangles may be overlay triangles (implying that they are drawn over existing mesh, with appropriate measures taken to prevent Z-buffer thrash), and they may be physical triangles, meaning they are used to calculate collisions and landings. The physical surface properties of the hard triangle come from the terrain type file. 
+ Mesh primitives replace the 200×150 grid from .env files. Terrain types replace custom custom textures and land uses. 
+ Objects 
+ Objects can be placed on the surface of the scenery (as defined by the mesh) and rotated around a vertical axis. Object files (OBJ) are used to define the appearance of the object. 
+ DSF Objects are the same as custom objects in an .ENV file. Default objects are no longer supported; however, X-Plane comes with a library of custom objects that may be used by any DSF file. 
+ Polygons 
+ Polygons are optionally nested, optionally closed vector paths along the surface of the earth (as defined by the mesh). Polygons are instantiated by polygon definition files. Each polygon has one parameter value. Currently two types of polygon definition files are supported: 
+ 
+ Facade definition files extrude 3-d buildings along the polygonal path. The definition file describes the way the building is textured and the parameter defines the height of the building in meters. 
+ Forest definition files fill the area within the polygon with 3-d objects (e.g. trees). The definition file describes the type and fill pattern of tree placement, and the parameter controls density. 
+ 
+ Polygons provide additional ways to create buildings with specific varying heights and also provide an option for creating 3-d vegetation. 
+ Vectors 
+ Vector primitives create pathways along and above the surface of the earth along vectors. Vector data consist of a series of junctions and a series of segments connecting the junctions. Each vector segment may be a straight line or bezier curve. 
+ The vector definition files describe the appearance of vectors, both on their own and when they connect at junctions. Network primitives replace the various pre-defined vectors found in X-Plane 7’s .env files. 
+ In a DSF file, each junction is numbered, starting at the index 1 and increasing consecutively within the DSF file. (The index zero is reserved.) These junction numbers allow X-Plane or another reader to rapidly reconstruct the network topology of the vector structures, and clearly define when two vector chains intersect. 
+ Raster Layers 
+ X-Plane 10 allows for raster layers to be directly encoded into a DSF. Each raster layer has a name in the definition atoms, and meta data defining its pixel format and dimensions. How the raster data is interpreted is defined by X-Plane. 
+ Building Block Definition Extensibility 
+ Building Block Definition files are text files. The individual definition files can be extended to allow for more powerful representation of the various building block types. 
+ The parameter for polygons can be interpretted as necessary by the polygon definition files. 
+ The terrain mesh can be extended to have additional per-vertex information, which can then be used by terrain type definition files. For example, in the default DSF scenery, some vertices have a ratio of plant coverage on each vertex, and this is used to blend textures. 
+ Chunky File Format 
+ The outer level of DSF files is chunky (also sometimes called atomic), meaning each section of the file has a uniform header describing the ID of the file section and the length. This allows programs to find the data they require without parsing unknown or unimportant parts of the file. It also allows programs to store extra data in a DSF that X-Plane will ignore. 
+ Where possible, standard encodings are used for the various atoms in a DSF file, reducing the amount of code needed to parse or write the file. 
+ Point Pools 
+ The 2-d, 3-d, and other coordinates in the file are stored in point pools. A point pool is a collection of N-dimensional points that are scaled and offset in a uniform matter. Point pools are always stored as fixed point fractions that are interpreted over a range that is specified once for each data plane in the point pool. 
+ In most cases there are special versions of the primitive commands that allow a primitive to be built along consecutive points in a pool. Point pools should be constructed to keep primitive vertices in order when vertices are used only for one primitive. 
+ Definition Tables 
+ The definitions for primitives are stored in tables; their order defines index numbers used to reference them. The tables store the file name for the text file defining the primitive. 
+ Atom Extensibility 
+ New atoms may be added to DSF in future versions via new atom IDs. Atom IDs consisting entirely of capital letters and numbers are reserved for the DSF specification. Other atom IDs can be used for private data. 
+ Command-Based File Format and State 
+ While atoms define the sections of a DSF file, commands accomplish most of the work of defining the file’s contents. The command section consists of a series of command opcodes, each of which instructs X-Plane to add a primitive to the current scenery, or change internal state during the DSF file parsing. The various state maintained while parsing a DSF file is reset at the beginning of the DSF file and maintained continuously through all commands; this state serves primarily as a technique to compress similar data. State must be specified before utilized in a DSF file. 
+ Current Definition and Current Road Subtype 
+ Each building block in a DSF file is instantiated using a definition; the current definition is maintained state that indicates what definition the next command will used. The set definition commands change this state. One current definition index number is maintained for all primitives. (This means that if an object index 0 follows a mesh of terrain type 0, no set definition is needed.) 
+ Selected Pool 
+ Before a coordinate from a pool can be used, the pool must be selected. Selecting the pool decides which of multiple geometry pools will be used. Only one pool can be selected at a time. 
+ Junction Offset 
+ Unlike other primitives, vector networks use a 32-bit point pool. A 32-bit point pool is precise enough to allow all data to be encoded in one pool. Since this pool might contain more than 65535 points, a junction offset is maintained and added to indices for most junction commands. 
+ Note: this feature exists primarily for historical reasons. However it is used by the default scenery renderer’s DSF writing library because it simplfies the process of organizing vector data to not have to worry about point pools. 
+ Terrain Patch LOD and Flags 
+ Each terrain patch has some properties associated with it; these properties are considered state. When a new patch is created, if these properties are not changed, the new patch has the same properties as the old one. 
+ Command Extensibility 
+ The addition of new DSF commands will break compatibility; this represents a change to the DSF spec. 
+ Building-Block Related Implementation Issues 
+ Point pools may have any number of data planes; the interpretation of those planes depends on the building block. All pools start with longitude and latitude and have at least two planes. Extra planes are ignored (and allowed for future expansion). Having too few planes is an error. 
+ Point Primitive Rotation Plane 
+ Point primitives require at least three planes: a longitude, a latitude, and a rotation. The rotation is performed around the gravity vector, a vector pointing straight down toward the center of the earth. The object sits on the surface defined by the mesh. If the terrain is sloped, the object may end up partially under ground; negative object Y coordinates allow for underground geometry. 
+ Rotations are stored in degrees. 
+ Polygon Parameters and Direction 
+ A polygon primitive defines a polygonal path or set of paths. When a polygon primitive actually contains nested polygons (to form holes), each polygon is known as a winding . A few restrictions on polygons and windings: 
+ 
+ Polygons may be concave or complex, but no edges can ever cross (except for ends touching) across any windings. 
+ If a winding is an outer boundary of a polygon (meaning the interior of the winding is part of the polygon, it must be counterclockwise. If a winding is an inner boundary (meaning inside the winding is outside the polygon, e.g. a hole), it must be clockwise. 
+ Each winding must be after every winding that contains it in the ordering of the winding list. 
+ 
+ Every point in the polygon sits on the surface of the mesh. 
+ Cross-Pool Vector Linkage 
+ The vector structures for DSF are more complex than those of ENV because they provide network topology. The building blocks of the network are junctions and chains. 
+ 
+ A vector segment is a single straight line or bezier curve between two points consisting all of the same type of vector. 
+ No segments can touch each other except at their ends. (However, if segments cross above and below each other in 3-d space, this is legal.) 
+ A chain is a series of connected vector segments such that the entire chain is of the same type, and each segment connects to exactly one other segment except at the ends of the chain. 
+ The ends of the segments within the chain are shape points. They define the shape of a chain but do not represent a junction between segments. 
+ The two ends of the chain are junctions. 
+ 
+ In a DSF file, each junction is assigned a unique 32-bit ID, starting at 1. Two chains form a junction if their end nodes have the same unique 32-bit ID. Only junction ID is used as a test to see if two chains meet at a junction. 
+ In the point pool for vectors, the 4th data plane (after longitude, latitude and elevation) is used for junction IDs. Zero is used to indicate that the point is a shape point and not a junction. 
+ There may be a complete chain whose geometry indices are not within 65536 of each other; in this case a special segment command is provided that allows for arbitrary 32-bit indices to be specified. 
+ Vector Type Indices 
+ Unlike other definition files, a single vector definition file contains multiple subtypes (also referenced by index). This allows a single definition file to provide specialized images for the crossing of vector subtypes that are both from the same definition file. 
+ Mesh State 
+ The scenery mesh is divided into patches. A patch is simply a collection of nearby triangles that have all of their attributes in common. Those attributes are: 
+ 
+ A level of detail range in meters indicating the range the patch can be seen at. 
+ The definition number defining the patches terrain type. 
+ Whether the patch needs to be treated in the physics model for X-Plane. 
+ Whether the patch is an overlay onto another patch (and must be treated for z-buffer thrash). 
+ 
+ A patch can either be textured by providing per-vertex texture coordinates or by using a projection equation. The projection equation is used for the texture but not necessarily the mask. 
+ The precise requirements and interpretation of planar geo data for a mesh patch are a function of both the mesh state for that patch and the terrain definition file itself. A precise description of X-Plane’s mesh behavior is documented in the .TER terrain type file format specification. 
+ Requiring Objects and Facades to Be Drawn 
+ Starting with X-Plane 8.10, if X-Plane sees the properties sim/require_object or  sim/require_facade in a DSF file, it will use the value of this property to force certain objects to be drawn even at lower settings. 
+ The value associated with these properties is a string containing two numbers separated by a slash. The first number is the X-Plane rendering level (0-6) at which to require the object, and the second the index number of the first object or facade definition to be affected. The property may be included multiple times. For example: 
+ 
+ 
+ 
+ Property 
+ Value 
+ 
+ 
+ sim/require_object 
+ 4/70 
+ 
+ 
+ sim/require_object 
+ 2/74 
+ 
+ 
+ 
+ In this example, all objects whose definition index is 70 or higher must be drawn when the object detail setting is 4 or higher. All objects with an index of 74 or higher must be drawn if the object detail setting is 2 or higher. (Note that the union of all rules is taken: so even though object definition index 75 is covered by both rules, the lower setting of 2 applies—these objects will be visible at rendering settings of 2 or lower.) 
+ To take advantage of this, a DSF may need to be organized so that “high priority” objects have higher (later) indexes in the file. 
+ DSF Specification 
+ Data Encoding 
+ Endian 
+ DFS files are binary little-endian files. Floating point numbers are stored in IEEE 32-bit or 64-bit format. 
+ DSF File Structure 
+ A DFS file is atomic, which is also sometimes called chunky. Each ‘atom’ of data has a size and ID at the beginning. 
+ 
+ 
+ 
+ The container format for DSF files is made up of the following sequential sections. 
+ Header 
+ The header contains an 8-byte unique ASCII cookie identifying this as an x-plane DSF file. The cookie will be the ASCII characters ‘XPLNEDSF’. This 8-byte unique cookie is followed by a 32-bit integer master file format version. The current version number is 1. 
+ Atoms 
+ Following the 12-byte header is a variable number of atoms. Each atom consists of a 32-bit atom ID followed by a 32-bit unsigned byte count for the size of the atom, including this 8-byte header. The contents of the atom depend on the atom’s ID. Atom IDs may be repeated, so the order of the atoms within the file may be significant. The DSF file may also place requirements on the order of the atoms within the files. 
+ Endian Note: since atom IDs are 32-bit integers (and not arrays of 4 characters), they are subject to endian-swapping. For example, viewing a DSF file in a windows hex editor the GEOD atom would read DOEG since ‘GEOD’ is really a 32-bit character constant that must be swapped. 
+ The atom section is variably sized. The atom section ends 16-bytes before the end of the file and can be thought to be the entire file with the header and footer removed. 
+ The format of the contents of an atom depend on the ID of the atom; different atoms may have different formats. Atoms may contain subatoms; usually the entire contents of the atom will be atoms in this case, but this is dependent on the details of the specific atoms in question. 
+ Footer 
+ The footer of a DSF file is a 128-bit MD5 signature of the previous contents (not including this signature). This forms a unique ID for this file that allows clients to detect revisions in content. 
+ Common Atom Formats 
+ Where possible, the same format is used for atoms that contain similar data; this is to reduce the amount of code necessary to read or write DSF files. This section describes some of the typical encodings of atoms. 
+   
+ Atom of Atoms 
+ This format encodes a number of atoms within a single atom, forming a hierarchy. The entire content space of the super-atom contains sub-atoms end-to-end. The number of sub-atoms may be found by traversing the atom until the total number of bytes in the super-atom have been processed. 
+ String Table Atom 
+ A string table atom contains a series of null-terminated C-strings packed with one null byte between each one. No padding/byte alignment bytes are necessary. The number of strings is determined by traversing the entire atom. A null character on the final string is necessary for the final string. 
+ Note: this is necessary to allow an empty string as the last string. It also allows the strings to be used in-place in a memory mapped file. 
+ The orders of the strings in a string table is significant; the string table atom forms a natural numbering starting at 0 for each string. Empty strings may be encoded via a single null character. 
+ Planar Numeric Atom 
+ A planar numeric atom contains one or more arrays of numbers in planar format. For example, a table of 100 latitude/longitude pairs would contain all of the latitudes first and then all of the longitudes. The numbers may be either fixed point, integer or floating point. The format of the numbers and number of planes are determined by the specific atom type (e.g. these are flexible within a planar numeric atom). This metadata is not written into the file itself; the reader must understand what kind of planar data to expect based on the atom ID. 
+ Note: the motivation for a planar structure is to keep similar-typed data together. In a lat/lon array, the latitude will be similar in range, as will the longitude. Metadata is not written to the file itself because the client must be able to interpret the data it reads, and therefore knows enough about a given planar numeric atom to provide the metadata as a key to reading it. It is unlikely that the numeric needs of low level atoms will change without the file format itself changing massively. 
+ Both the number of data tuples and the number of planes are written into the planar numeric atom. 
+ A planar numeric atom’s data plane may be compressed in two ways (which are not mutually exclusive) for four possible encoding forms: 
+ 
+ Raw data. Each number follows sequentially. 
+ Differenced. Each number is subtracted from the previous and then written to the file. Wrapping rules apply to integer number types. 
+ Run-length-encoded. A byte count and flag indicate the number of similar numbers, followed by the number, or the number of individual numbers, followed by the numbers. 
+ The array may be differenced first and then run-length encoded. 
+ 
+ Note: the goal of differencing is to decrease the range of values that appear when data is always closely spaced. The goal of run-length-encoding is to get a big savings for constant data. 
+ The number of items in each plane of the array must be the same, and each item must have the same number of planes. The format of the atom is: 
+ 
+ A 32-bit item count for the number of items in the array. 
+ An 8-bit plane count for the number of planes in the atom. 
+ For each plane, a 1-byte enumeration for the encoding type. These are: raw = 0, differenced = 1, RLE = 2, RLE differenced = 3, followed by: 
+ Variable length encoded data depending on the compression type and numeric format. 
+ 
+ The run-length byte for run-length encoding is an unsigned 8-bit character. The high-bit indicates a repeat of up to 127 of the following number. The high bit cleared indicates up to 127 non-repeating elements. 
+ DSF is little endian, but differencing is done in the machine’s endian format (e.g. differencing is done logically on the data, not on the file). RLE is a bit-wise operation and is not endian-sensitive. 
+ DSF Atoms 
+ The various file sections of a DSF file are each contained within separate atoms, with their own IDs. The header ID is listed on the header of each section of this specification. 
+ Header Atom (‘HEAD’) 
+ This is an atom of atoms containing information about the DSF file. The HEAD atom is an atom-of-atoms in the top level of the file and currently contains one subatom the PROP atom. 
+ Properties Atom (‘PROP’) 
+ The properties atom is a string table atom with an even number of strings; each consecutive pair of strings represents a property name and a property value. This allows for arbitrary metadata to be placed inside a DSF file. 
+ Properties starting with sim/ are reserved for public X-Plane use. Properties starting with laminar/ are reserved for X-Plane private use. All other prefixes may be used for private data. When storing private data in the DSF properties metadata section, prefix the property with your company or organization name to prevent conflicts. 
+ The following properties are currently defined: 
+ 
+ 
+ 
+ Property 
+ Default If Missing 
+ Definition 
+ 
+ 
+ sim/west 
+ (Required) 
+ The western edge of the DSF file in degrees longitude. 
+ 
+ 
+ sim/east 
+ (Required) 
+ The eastern edge of the DSF file in degrees longitude. 
+ 
+ 
+ sim/south 
+ (Required) 
+ The northern edge of the DSF file in degrees latitude. 
+ 
+ 
+ sim/north 
+ (Required) 
+ The southern edge of the DSF file in degrees latitude. 
+ 
+ 
+ sim/planet 
+ earth 
+ The planet this DSF belongs to, one of ‘earth’ or ‘mars’. 
+ 
+ 
+ sim/creation_agent 
+ (Blank) 
+ The name of the program that created the DSF file if known. 
+ 
+ 
+ sim/author 
+ (Blank) 
+ The name of the author of the DSF file if known. 
+ 
+ 
+ sim/require_object 
+ N/A 
+ Requirements for displaying objects (see below). 
+ 
+ 
+ sim/require_facade 
+ N/A 
+ Requirements for displaying facades (see below). 
+ 
+ 
+ 
+ The sim/require_object and sim/require_facade properties specify that objects and facade whose definition index is greater than or equal to a certain number must be drawn by the sim. Normally the sim may draw only a fraction of the objects or facades in a DSF, based on the user’s rendering settings. By including these properties, you can force X-Plane to always draw objects. 
+ Definitions Atom (‘DEFN’) 
+ The definitions atom contains a series of subatoms that define the various ‘definitions’ used within the DSF file. DSF files first reference a few common definitions and then use them in a larger number of instances. Each definition comes from an external file, allowing definitions to be shared among DSF files or even between scenery packages. (This allows custom scenery packages to use a variety of x-plane-default definitions.) The various definition formats are described in other specifications. 
+ The definition atom is an atom-of-atoms syntactically. All definition sub atoms define a series of partial file paths by being string table atoms. The forward slash (‘/’) should be used as the directory separator. All definitions are referred to by zero-based index in the rest of the file. A maximum of 65536 entries are allowed in any one table. The extension for the file path is always included. 
+ The following four atoms sit inside the definitions atom: the TERT, OBJT, POLY and NETW atoms. 
+ Terrain Types Atom (‘TERT’) 
+ The terrain types atom lists a number of external .ter terrain-definition files that define the various terrains used in the DSF file. Terrain-definition files describe the set of textures to be used for the terrain (dependent on season) as well as other metadata (for example, is this terrain hard, bumpy, etc.). 
+ You may also use .png or .bmp files directly to specify terrain types. See the .ter file specification for info on both the .ter file format and on using PNG and BMP files here. 
+ Objects Atom (‘OBJT’) 
+ The objects atom lists a number of external .obj object files that may be ‘placed’ repeatedly in the DSF file. With DSF files there are no default object types; radio stacks, sky scrapers, etc. are all created using either Object or Prototype (see below) files. 
+ The Polygons Atom (‘POLY’) 
+ The prototype atom lists a number of external polygon definition files that may be usde within the DSF file. 
+ Polygon definitions can be either facades or forests; X-Plane determines the type of polygon definition from the filename extension. 
+ Vector Network Atom (‘NETW’) 
+ The network atom lists a number of external .net network definition files that may be used within the DSF file. While individual objects are placed separately in a file, roads and other ‘networks’ intersect each other. A network definition file describes the appearance and geometry not only of multiple different types of roads (or other segments), but how to build blended intersections of those segments. 
+ X-PLANE NOTE: X-Plane 8 and 9 can only accept one network definition per DSF file; use vector subtypes to define multiple road types, etc. 
+ Raster Definition Atom (‘DEMN’) 
+ New to X-Plane 10 : The raster definition atom defines the names for each raster layer contained in the DSF. The order of raster data in the subsequent atoms matches the order of names in the raster definition atom. 
+ Geodata Atom (‘GEOD’) 
+ The geodata atom defines all of the coordinates for all geometry in the DSF file. Coordinates are separated from instantiations of definitions to encourage recycling and reduce file size. 
+ The Geodata atom is an atom-of-atoms at the root of the DSF file. The GEOD atom contains zero or more POOL, SCAL, PO32 and SC32 atoms. 
+ 16-bit Coordinate Pool atom (‘POOL’) 
+ This atom is a planar numeric atom with a variable number of planes and 16-bit unsigned int data, establishing a coordinate pool. Multiple pool atoms sit inside the Geodata atom, so the index number of this coordinate pool is based on its order within the geodata atom, starting at 0. Points are stored in sixteen bit unsigned short format, representing values from [ [0-65536) ]] . 
+ 16-bit Scaling Range Atoms (‘SCAL’) 
+ For each pool atom there is also a scaling range atom in the GeoData atom, telling how to process the point pools. Each scaling atom contains an array of 32-bit floating point numbers. There are two floats for each plane in the corresponding point pool, the first being a scaling multiplier and the second being an offset to be added to the points. These values are applied in double-precision. 
+ POOL and SCAL atoms are applied based on their order within the file, e.g. the 5th POOL atom within the GEOD atom is scaled by the 5th SCAL atom in the GEOD atom. There must be an equal number of POOL and SCAL atoms. The data planes in the pool atom correspond to the values in the scal atom, so if there are n planes in a POOL atom, its corresponding SCAL atom must have 2n 32-bit floats. 
+ 32-bit Coordinate Pool Atom (‘PO32’) 
+ The 32-bit point pool atom is the same as the 16-bit point pool atom except that each data element is a 32-bit rather than 16-bit unsigned int. 32-bit point pool atoms are used for vectors; all other building blocks use 16-bit point pools. 
+ 32-bit Scaling Range Atom (‘SC32’) 
+ The 32-bit scaling range atom is the same as the 16-bit scaling range atom except that it is appleid to 32-bit point pool atoms. In other words, the 3rd SC32 atom scales the 3rd PO32 atom. The atom is still formed of 32-bit floats, but like the 16-bit scaling atom, the conversion is done in double-precision floating point. 
+ Raster Data Atom (‘DEMS’) 
+ New to X-Plane 10: The raster data atom is an atom of atoms containing the meta data and raw data for each raster layer in the DSF. 
+ The raster data atom contains one raster layer information (‘DEMI’) and one raster layer data atom (‘DEMD’) for each raster layer. The order of information and data atoms must match with the raster definition atoms. This is how names, meta data, and raw data are matched in the DSF. 
+ Raster Layer Information Atom (‘DEMI’) 
+ The raster layer information atom contains the structure information for one raster layer. The atom is a record of DEM information, encoded as follows: 
+ 
+ 
+ 
+ Field 
+ Encoding 
+ Description 
+ 
+ 
+ Version 
+ uint8 
+ Version of DEM record; set to 1 
+ 
+ 
+ Bytes Per Pixel 
+ uint8 
+ The number of bytes for each pixel. Should be 1,2, or 4 depending on encoding 
+ 
+ 
+ Flags 
+ uint16 
+ Encoding Flags – see below 
+ 
+ 
+ Width 
+ uint32 
+ Width of the DEM east-west in pixels 
+ 
+ 
+ Height 
+ uint32 
+ Height of the DEM north-south in pixels 
+ 
+ 
+ Scale 
+ float32 
+ Scaling factor to apply to DEM pixels post-load 
+ 
+ 
+ Offset 
+ float32 
+ Offset factor to apply to DEM pixels post-load 
+ 
+ 
+ 
+ Each final DEM pixel is multiplied by scale and then offset is added. 
+ The flags field defines a number of other DEM properties: 
+ 
+ The low 2 bits tell the number type for the DEM data:
+ 
+ 0 = floating point (bytes per pixel must be 4) 
+ 1 = signed integer (bytes per pixel must be 1, 2 or 4) 
+ 2 = unsigned integer (bytes per pixel must be 1, 2 or 4) 
+ 
+ 
+ A flag value of 4 (bit 3) defines the data as post-centric, as opposed to area-centric.
+ 
+ In post-centric data, the pixel values at the edges of the DEM exactly lie on the geometric boundary of the DSF. 
+ In point-centric data, the outer edge of the pixel rectangles lie on the geometric boundary of the DSF. 
+ 
+ 
+ 
+ Raster Layer Data Atom (‘DEMD’) 
+ The raster data atom contains the actual raw raster data, sitting directly in the atom’s payload, one DEMD atom per layer. The information atom above tells how to inerpret this raw data. 
+ Commands Atom (‘CMDS’) 
+ The commands atom contains a list of commands used to actually instantiate the scenery file by applying prototypes, objects, etc. at the coordinates available in the geodata atom. 
+ Commands consist of a command ID and additional information in series. Command order is arbitrary but may be optimized for file size by the file writer. Command order does not affect display order when X-Plane renders scenery; display order is affected by internal factors in the rendering engine. 
+ The number of bytes used by a command is known through its type; unknown commands cannot be skipped. The commands are finished when the last command in the atom is parsed. All command IDs are 8-bit. Command ID 255 is reserved for future expansion. The format of the data following the command is based on the command ID. 
+ All commands that include a range of indices list the first index, and one more than the last index. All commands reference 16-bit point pools except for vector commands, which reference 32-bit point pools. 
+ DSF Commands 
+ Each command is listed in order of ID; any data that must follow the command is listed below. Data items listed are: 
+ 
+ 
+ 
+ 
+ uint8 
+ Unsigned 8-bit integer. 
+ 
+ 
+ sint8 
+ Signed 8-bit integer. 
+ 
+ 
+ uint16 
+ Unsigned 16-bit integer. 
+ 
+ 
+ sint16 
+ Signed 16-bit integer. 
+ 
+ 
+ uint32 
+ Unsigned 32-bit integer. 
+ 
+ 
+ sint32 
+ Signed 32-bit integer. 
+ 
+ 
+ f32 
+ 32-bit IEEE floating point. 
+ 
+ 
+ f64 
+ 64-bit IEEE floating point. 
+ 
+ 
+ 
+ 
+ State Selection Commands 
+ These commands change the internal state of the DSF reader, affecting the results of subsequent commands. 
+ COORDINATE POOL SELECT (ID=1) 
+ The coordinate pool select command changes the current coordinate pool and establishes the longitude and latitude bounds that the first two fields are interpreted within. 
+ uint16 zero based pool index 
+ JUNCTION OFFSET SELECT (ID=2) 
+ The junction offset select command specifies a 32-bit number that is added to all indices when referencing coordinates for vectors. This allows the use of a 16-bit vector command for vectors whose indices are greater than 65535. 
+ uint32 zero based index offset 
+ SET DEFINITION 8 (ID=3) 
+ uint8 zero based definition index 
+ SET DEFINITION 16 (ID=4) 
+ This is the same as above, but with a 16-bit index. 
+ uint16 zero based definition index 
+ SET DEFINITION 32 (ID=5) 
+ This is the same as above, but with a 32-bit index. 
+ uint32 zero based definition index 
+ SET ROAD SUBTYPE 8 (ID=6) 
+ This command sets the road subtype for the next vector-segment. 
+ uint8 zero based road subtype 
+ Object Placement Commands 
+ These commands place an object on the surface of the mesh. A point pool must be selected and must have at least 3 planes, which are treated as a longitude, latitude, and rotation in degrees. 
+ OBJECT COMMAND (ID=7) 
+ This command places a single object based on the current definition. 
+ uint16 coordinate index 
+ OBJECT RANGE COMMAND (ID=8) 
+ This command places several objects based on the current definition, using all vertices within a range. 
+ uint16 index of first objectuint16 index of last object+1 
+ Network Commands 
+ The network commands instantiate complete chains and junctions for a network. Networks are formed by instantiating complete chains. The coordinate pool for a network segment must have either four planes (longitude, latitude, elevation, junction ID) or seven planes (adding on longitude, latitude, and a shape point for shaping). 
+ Junction IDs are one-based consecutive unique integers. Junction IDs simply indicate what junctions will link to each other; if two junctions have the same ID but different spatial locations (based on the first three planes after transform), this is an error. 
+ The junction ID zero indicates a shape point, meaning a coordinate that changes the shape of a vector but is not a junction. 
+ All network commands except for the network-chain-32 command add the junction offset to all indices. 
+ NETWORK CHAINS (ID=9) 
+ This command creates one or more complete chains, using all of the vertices that are specifically enumerated. Complete chains are started or ended based on the presence of a non-zero junction ID. 
+ uint8 number of coordinates
+
+N x uint16 coordinate indices 
+ NETWORK CHAINS RANGE (ID=10) 
+ This command creates one or more complete chains, using all of the vertices within the range specified. Complete chains are started or ended based on the presence of a non-zero junction ID. 
+ uint16 first coordinate inde
+
+uint16 index of last coordinate+1 
+ NETWORK CHAIN 32 (ID=11) 
+ This command creates one or more complete chains, but rather than using 16-bit indices and the junction offset, they use explicit 32-bit indices and no offset. Use this command to create a vector when the indices span a range of more than 65536. 
+ uint8 number of coordinates
+
+N xuint32 coordinate indices 
+ Polygon Commands 
+ The polygon commands instantiate polygon primitives on the surface of the mesh. The selected plane must have at least two planes, which are interpretted as longitude and latitude. A per-polygon 16-bit parameter is interpretted based on the polygon definition. 
+ POLYGON (ID=12) 
+ This command instantiates a single polygon. 
+ uint16 parameter valueuint8 number of indices
+
+N x uint16 coordinate indices 
+ POLYGON RANGE (ID=13) 
+ This command instantiates a polygon through a contiguous range of vertices. 
+ uint16 parameter valueuint16 first index
+
+uint16 last index+1 
+ NESTED POLYGON (ID=14) 
+ This command instantiates a series of polygons, each with a distinct winding. 
+ uint16 parameter
+
+uint8 number of polygon windings
+
+(for each of N windings)
+
+ uint8 number of indices
+
+ M x uint16 coordinate indicies 
+ NESTED POLYGON RANGE (ID=15) 
+ This command instantiates a series of polygons with distinct windings using a list of contiguous ranges. Each index starts a winding except for the last, which is one past the end of the polygon’s last point. 
+ uint16 param value
+
+uint8 number of indices (this polygon has N-1 windings).
+
+N x uint16 indices 
+ Mesh Commands 
+ The mesh commands instantiate the terrain mesh as triangles. The mesh commands take planar data with at least 5 parameters, corresponding to to longitude, latitude, elevation, and a normal. Additional parameters are used to texture the patch based on the .ter terrain type definition file. 
+ Mesh normals are defined as a pair of coordinates from -1.0 to 1.0 that represent the X and Z components of a normalized normal vector, where the positive X axis points east and the positive Z axis points south. The Y component is derived from the X and Z components by X-Plane. 
+ There are three ways to specify triangles in a patch: triangles, strips and fans. Strips and fans are adjacent triangles that share common vertices. This lets you specify more triangles with less vertices, saving file size by up to a factor of 3. 
+ For each type of triangle primitive (fan, strip, or individual triangles), there are three commands. One places triangles by a series of indices (up to 255 per command). Another uses a range of consecutive indices, saving file size. A third takes points from multiple point pools by specifying the point pool individually. 
+ Note: why is there a cross-pool triangle command? Mesh vertices must have the exact same coordinates or else the mesh will have cracking – visible OpenGL artifacts. There may be rounding error associated with reducing the coordinate to a 16-bit integer via the scaling factors. Therefore if a coordinate V is included in two different point pools (for use in two different triangles), the two triangles may not actually line up at coordinate V. To guarantee alignment, both triangles must reference coordinate V in the same point pool, which means that triangles may have to span point pools to form the entire mesh. 
+ TERRAIN PATCH (ID=16) 
+ This command indicates that a new terrain patch is being created. The patch will have the same LOD range and flags that the last created patch had. 
+ no data follows this command. 
+ TERRAIN PATCH FLAGS (ID=17) 
+ This command indicates that a new terrain patch is being created. The patch will have the same LOD range as the last patch, but new flags. The flags are: 
+ 
+ 
+ 
+ 
+ Bit Value 
+ Indication 
+ 
+ 
+ 1 
+ Physical – if set, this patch is used for collision detectoin. If cleared, the patch is drawn but not collision-checked. 
+ 
+ 
+ 2 
+ Overlay – if set, this patch is drawn over another patch. Z buffering precautions are taken. The precise interpretation of this flag may depend on the terrain type. 
+ 
+ 
+ 
+ 
+ uint8 new flag values 
+ TERRAIN PATCH FLAGS AND LOD (ID=18) 
+ This command indicates that a new terrain patch is being created. Besides specifying flags, a new LOD range in meters is also provided. Flags are the same as above. 
+ uint8 flagsf
+
+32 near LOD
+
+f32 far LOD 
+ PATCH TRIANGLE (ID=23) 
+ This command creates one or more specific triangle for a terrain patch. Triangles must have clockwise rotation as seen from above for all triangle primitives. 
+ uint8 coord count
+
+N x uint16 coordinate indices 
+ TRIANGLE PATCH CROSS-POOL (ID=24) 
+ This command creates one triangle from multiple terrain pools. This is the same as the command above, except that a pool index is provided per vertex. 
+ uint8 coord count
+
+2N x uint16 pool ID/coord index pairs 
+ PATCH TRIANGLE RANGE (ID=25) 
+ This command creates a number of triangles based on the inclusive range of coordinate indices. The range must be a multiple of 3. Each set of 3 adjacent vertices is treated as a triangle. 
+ uint16 first index
+
+uint16 last index+1 
+ PATCH TRIANGLE STRIP (ID=26) 
+ This command creates a triangle strip. A triangle strip is a series of adjacent triangles that share two common vertices; for a series of points 1,2,3,4,5 as a triangle strip is equivalent to the triangles 123,243,345… 
+ uint8 coordinate count
+
+N x uin16 coordinate indices 
+ PATCH TRIANGLE STRIP CROSS-POOL (ID=27) 
+ This command creates a triangle strip, except the point pool is specified per vertex rather than referencing the current coordinate pool. 
+ uint8 coordinate count
+
+2N x uint16 poolID/coord index pairs. 
+ PATCH TRIANGLE STRIP RANGE (ID=28) 
+ This command creates a triangle strip for a series of consecutive coordinates. 
+ uint16 index of first coordinate
+
+uint16 index of last coordinate+1 
+ PATCH TRIANGLE FAN (ID=29) 
+ This command creates a triangle fan. A triangle fan is a series of adjacent triangles that share two common vertices; for a series of points 1,2,3,4,5 as a triangle fan is equivalent to the triangles 123,134, 145… 
+ uint8 coordinate count
+
+N x uin16 coordinate indices 
+ PATCH TRIANGLE FAN CROSS-POOL (ID=30) 
+ This command creates a triangle fan, except the point pool is specified per vertex rather than referencing the current coordinate pool. 
+ uint8 coordinate count
+
+2N x uint16 poolID/coord index pairs. 
+ PATCH TRIANGLE FAN RANGE (ID=31) 
+ This command creates a triangle fan for a series of consecutive coordinates. 
+ uint16 index of first coordinate
+
+uint16 index of last coordiante+1 
+ Comment Commands 
+ These commands allow arbitrary data to be embedded in a DSF file. The commands are defined by the size of the length field, allowing for larger or smaller comment blocks. The length field tells the length of the following comment data not including the length field itself. 
+ COMMENT 8 (ID=32) 
+ uint8 length
+
+N x uint8 comment data 
+ COMMENT 16 (ID=33) 
+ This defines a comment of up to 65535 bytes. 
+ N x uint8 comment data 
+ COMMENT 32 (ID=34) 
+ This defines a comment of up to 4294967295 bytes. 
+ uint32 length
+
+N x uint8 comment data 
+ 
+ 
+ 
+ 
+ 
+ Contents 
+ 
+ 1 DSF Overview 1.1 DSF as Part of the Scenery System 1.1.1 Projection and Coordinates 1.1.2 Properties 1.1.3 Compression and File Hashing 1.1.4 Compatibility Goals 1.2 Definition Files and Building Blocks 1.2.1 Mesh Patches 1.2.2 Objects 1.2.3 Polygons 1.2.4 Vectors 1.2.5 Raster Layers 1.2.6 Building Block Definition Extensibility 1.3 Chunky File Format 1.3.1 Point Pools 1.3.2 Definition Tables 1.3.3 Atom Extensibility 1.4 Command-Based File Format and State 1.4.1 Current Definition and Current Road Subtype 1.4.2 Selected Pool 1.4.3 Junction Offset 1.4.4 Terrain Patch LOD and Flags 1.4.5 Command Extensibility 1.5 Building-Block Related Implementation Issues 1.5.1 Point Primitive Rotation Plane 1.5.2 Polygon Parameters and Direction 1.5.3 Cross-Pool Vector Linkage 1.5.4 Vector Type Indices 1.5.5 Mesh State 1.5.6 Requiring Objects and Facades to Be Drawn 2 DSF Specification 2.1 Data Encoding 2.1.1 Endian 2.2 DSF File Structure 2.2.1 Header 2.2.2 Atoms 2.2.3 Footer 2.2.4 Common Atom Formats 2.2.4.1 Atom of Atoms 2.2.4.2 String Table Atom 2.2.4.3 Planar Numeric Atom 2.3 DSF Atoms 2.3.1 Header Atom (‘HEAD’) 2.3.1.1 Properties Atom (‘PROP’) 2.3.2 Definitions Atom (‘DEFN’) 2.3.2.1 Terrain Types Atom (‘TERT’) 2.3.2.2 Objects Atom (‘OBJT’) 2.3.2.3 The Polygons Atom (‘POLY’) 2.3.2.4 Vector Network Atom (‘NETW’) 2.3.2.5 Raster Definition Atom (‘DEMN’) 2.3.3 Geodata Atom (‘GEOD’) 2.3.3.1 16-bit Coordinate Pool atom (‘POOL’) 2.3.3.2 16-bit Scaling Range Atoms (‘SCAL’) 2.3.3.3 32-bit Coordinate Pool Atom (‘PO32’) 2.3.3.4 32-bit Scaling Range Atom (‘SC32’) 2.3.4 Raster Data Atom (‘DEMS’) 2.3.4.1 Raster Layer Information Atom (‘DEMI’) 2.3.4.2 Raster Layer Data Atom (‘DEMD’) 2.3.5 Commands Atom (‘CMDS’) 2.4 DSF Commands 2.4.1 State Selection Commands 2.4.1.1 COORDINATE POOL SELECT (ID=1) 2.4.1.2 JUNCTION OFFSET SELECT (ID=2) 2.4.1.3 SET DEFINITION 8 (ID=3) 2.4.1.4 SET DEFINITION 16 (ID=4) 2.4.1.5 SET DEFINITION 32 (ID=5) 2.4.1.6 SET ROAD SUBTYPE 8 (ID=6) 2.4.2 Object Placement Commands 2.4.2.1 OBJECT COMMAND (ID=7) 2.4.2.2 OBJECT RANGE COMMAND (ID=8) 2.4.3 Network Commands 2.4.3.1 NETWORK CHAINS (ID=9) 2.4.3.2 NETWORK CHAINS RANGE (ID=10) 2.4.3.3 NETWORK CHAIN 32 (ID=11) 2.4.4 Polygon Commands 2.4.4.1 POLYGON (ID=12) 2.4.4.2 POLYGON RANGE (ID=13) 2.4.4.3 NESTED POLYGON (ID=14) 2.4.4.4 NESTED POLYGON RANGE (ID=15) 2.4.5 Mesh Commands 2.4.5.1 TERRAIN PATCH (ID=16) 2.4.5.2 TERRAIN PATCH FLAGS (ID=17) 2.4.5.3 TERRAIN PATCH FLAGS AND LOD (ID=18) 2.4.5.4 PATCH TRIANGLE (ID=23) 2.4.5.5 TRIANGLE PATCH CROSS-POOL (ID=24) 2.4.5.6 PATCH TRIANGLE RANGE (ID=25) 2.4.5.7 PATCH TRIANGLE STRIP (ID=26) 2.4.5.8 PATCH TRIANGLE STRIP CROSS-POOL (ID=27) 2.4.5.9 PATCH TRIANGLE STRIP RANGE (ID=28) 2.4.5.10 PATCH TRIANGLE FAN (ID=29) 2.4.5.11 PATCH TRIANGLE FAN CROSS-POOL (ID=30) 2.4.5.12 PATCH TRIANGLE FAN RANGE (ID=31) 2.4.6 Comment Commands 2.4.6.1 COMMENT 8 (ID=32) 2.4.6.2 COMMENT 16 (ID=33) 2.4.6.3 COMMENT 32 (ID=34) 
+ 
+ 
+ Meta 
+
+ Topic: 
+ 
+ Scenery 
+ Article type: 
+ 
+ File Format Specification 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ Developer resources for the X-Plane flight simulator 
+ 
+ 
+ 
+ 
+ Never miss an update 
+ Sign up for email updates below to get the latest X‑Plane news in your inbox. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ Sign Up 
+ 
+ 
+ 
+ 
+ We will never sell or share your email address; we’ll only use it to send you X‑Plane-related emails. (More info in our privacy policy .) 
+ You’ll receive about one email a month, and you can unsubscribe at any time. 
+ 
+ 
+ 
+ 
+ 
+ © X-Plane 2026 
+ Privacy Policy 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
