@@ -30,17 +30,26 @@ load as an overlay (the DSF carries ``PROPERTY sim/overlay 1``).
 
 Placeholder objects
 -------------------
-Structure height (meters) selects the object:
+The FCC ``structure_type`` selects a style family, and the structure height
+(meters) selects the object within that family:
 
-* <= 25 m: the stock ``comm_tower_10m/15m/25m`` family (airport scenery
-  library) -- the smallest stock radio tower is 50 m, so these are a much
-  better size match for short towers.
-* > 25 m: the stock radio-tower set (``r50`` .. ``r350``), verified to be
-  meter-scaled (r50 = 50 m, r200 = 200 m, r350 = 300 m).
+* big (TOWER, LTOWER, GTOWER, MTOWER, ...): <= 25 m the stock
+  ``comm_tower_10m/15m/25m`` family (airport scenery library) -- the
+  smallest stock radio tower is 50 m, so these are a much better size
+  match for short towers; > 25 m the stock radio-tower set (``r50`` ..
+  ``r300``), verified meter-scaled.  Stock radio geometry tops out at the
+  300 m mesh (``r350``..``r650`` all export the same model), so taller
+  structures clamp to the 300 m object.
+* small (POLE, MAST, UPOLE, ...): the same ramp with finer resolution at
+  the bottom (5/8/12 m stock objects).
+* building-attached / non-tower types (B, BANT, BTWR, TANK, TREE, SILO,
+  PIPE, STACK, SIGN, ...) are not drawn: they are antennas on other
+  structures, or not towers at all.
 
-DSFTool's text format does not preserve a per-object *scale*, so size variety
-is achieved by object choice rather than scaling. Swap the ``TOWER_OBJECTS``
-table for custom/public-domain models later.
+An explicit ``object_path`` CSV column always wins (custom/public-domain
+models, test galleries).  DSFTool's text format does not preserve a
+per-object *scale*, so size variety is achieved by object choice rather
+than scaling.
 
 Standard library only. Requires ``DSFTool.exe`` (X-Plane SDK / XP12 Tools)
 on the PATH.
@@ -63,17 +72,23 @@ import sys
 from collections import OrderedDict
 
 # ---------------------------------------------------------------------------
-# Placeholder object table
+# Placeholder object tables (one style family per FCC structure family)
 # ---------------------------------------------------------------------------
-# Small buckets use the stock comm-tower family from the airport scenery
-# library (airport scenery/library.txt):
-#   EXPORT lib/constructions/antennas/comm_tower_10m_1.obj  Common_Elements/antennas/ctower_10m_01.obj
-# (variants _1/_2/_3 are different styles; same for 12m/15m/25m)
-# Larger buckets use the stock "900 us objects" radio-tower set (verified
-# meter-scaled by measuring the OBJ geometry):
-#   EXPORT /lib/global8/us/feat_RadioTower_10_10_650rNNN.obj  obstacles/radio_XX.obj
-# Key = the maximum structure height (meters) the object stands in for.
-TOWER_OBJECTS = OrderedDict([
+# Object sources (stock library; heights verified by measuring the OBJ
+# geometry):
+#  * comm-tower family, airport scenery library (binary OBJ, named heights):
+#      EXPORT lib/constructions/antennas/comm_tower_10m_1.obj  Common_Elements/antennas/ctower_10m_01.obj
+#    (variants _1/_2/_3 are different styles; same for 12m/15m/25m).  The
+#    smallest stock radio tower is 50 m, so comm towers cover <= 25 m.
+#  * small antenna family, airport scenery library:
+#      lib/constructions/antennas/antenna_5m_01.obj .. antenna_8m_06.obj
+#  * radio-tower set, "900 us objects" pack (meter-scaled):
+#      EXPORT /lib/global8/us/feat_RadioTower_10_10_650rNNN.obj  obstacles/radio_XX.obj
+#    The 5x5 and 10x10 series export the SAME physical files, and the
+#    physical size ramp is 50/100/150/200/250/300 m -- r350..r650 all
+#    export the 300 m mesh, so nothing stock exists above 300 m.
+# Table key = the maximum structure height (meters) the object stands in for.
+BIG_TOWERS = OrderedDict([
     (10,  "lib/constructions/antennas/comm_tower_10m_1.obj"),
     (15,  "lib/constructions/antennas/comm_tower_15m_1.obj"),
     (25,  "lib/constructions/antennas/comm_tower_25m_1.obj"),
@@ -83,17 +98,69 @@ TOWER_OBJECTS = OrderedDict([
     (200, "/lib/global8/us/feat_RadioTower_10_10_650r200.obj"),
     (250, "/lib/global8/us/feat_RadioTower_10_10_650r250.obj"),
     (300, "/lib/global8/us/feat_RadioTower_10_10_650r300.obj"),
-    (350, "/lib/global8/us/feat_RadioTower_10_10_650r350.obj"),
 ])
 
+SMALL_MASTS = OrderedDict([
+    (5,   "lib/constructions/antennas/antenna_5m_01.obj"),
+    (8,   "lib/constructions/antennas/antenna_8m_01.obj"),
+    (10,  "lib/constructions/antennas/comm_tower_10m_1.obj"),
+    (12,  "lib/constructions/antennas/comm_tower_12m_1.obj"),
+    (15,  "lib/constructions/antennas/comm_tower_15m_1.obj"),
+    (25,  "lib/constructions/antennas/comm_tower_25m_1.obj"),
+    (50,  "/lib/global8/us/feat_RadioTower_10_10_650r50.obj"),
+    (100, "/lib/global8/us/feat_RadioTower_10_10_650r100.obj"),
+    (150, "/lib/global8/us/feat_RadioTower_10_10_650r140.obj"),
+    (200, "/lib/global8/us/feat_RadioTower_10_10_650r200.obj"),
+    (250, "/lib/global8/us/feat_RadioTower_10_10_650r250.obj"),
+    (300, "/lib/global8/us/feat_RadioTower_10_10_650r300.obj"),
+])
 
-def pick_object(height_m, structure_type, table):
-    """Return the resource path for a placeholder object.
+FAMILIES = {"big": BIG_TOWERS, "small": SMALL_MASTS}
 
-    Height-based: pick the shortest object whose cap is >= the structure
-    height (so a 61 m tower gets the 100 m object, a 400 m tower the 350 m
-    object). ``structure_type`` is reserved for future type-aware mapping.
+# FCC structure_type -> style family.  Codes are normalized by stripping
+# leading/trailing digits first ("3TA2" -> "TA", "2TOWER" -> "TOWER").
+# None = suppressed (not drawn).  Unlisted codes fall back to DEFAULT_FAMILY.
+TYPE_FAMILY = {
+    # self-supporting / guyed / monopole towers
+    "TOWER": "big", "LTOWER": "big", "GTOWER": "big", "MTOWER": "big",
+    "LTA": "big", "GTA": "big", "MTA": "big", "TA": "big",
+    # free-standing poles and masts
+    "POLE": "small", "UPOLE": "small", "MAST": "small",
+    # building-attached antennas or non-tower structures (do not draw)
+    "B": None, "BANT": None, "BTWR": None, "BMAST": None, "BPOLE": None,
+    "BPIPE": None, "TANK": None, "TREE": None, "SILO": None, "PIPE": None,
+    "STACK": None, "SIGN": None,
+}
+DEFAULT_FAMILY = "big"  # blank/unknown types keep drawing (a tower beats nothing)
+
+
+def family_for(structure_type):
+    """Map an FCC structure_type to a style family, or None (suppressed).
+
+    Leading digits (structure number) and trailing digits (structures at
+    site) are stripped first: "3TA2" -> "TA", "0LTA0" -> "LTA".
     """
+    t = (structure_type or "").strip().upper()
+    t = t.strip("0123456789")
+    if not t:
+        return DEFAULT_FAMILY
+    return TYPE_FAMILY.get(t, DEFAULT_FAMILY)
+
+
+def pick_object(height_m, structure_type, family=None):
+    """Return a resource path for a placeholder object, or None to skip.
+
+    Type-aware: ``family_for`` routes the FCC structure_type to a style
+    family (suppressed types return None); within the family, the shortest
+    object whose cap is >= the structure height is picked (a 61 m tower
+    gets the 100 m object; anything above 300 m clamps to the 300 m
+    object, the tallest stock radio mesh).  ``family`` forces one family
+    for every record (``--object``).
+    """
+    fam = family or family_for(structure_type)
+    if fam is None:
+        return None
+    table = FAMILIES[fam]
     if not (height_m and height_m > 0):
         height_m = 100.0  # sensible default when height is missing
     for cap in table:
@@ -338,8 +405,9 @@ def main(argv=None):
                    help="texture path for the plinth, relative to the scenery "
                         "pack root (default: texture/white.pol, generated "
                         "together with a solid-white white.png)")
-    p.add_argument("--object", default="radio",
-                   help="placeholder family (currently: radio)")
+    p.add_argument("--object", default="",
+                   help="force one style family for every record: big or "
+                        "small (default: pick per FCC structure_type)")
     p.add_argument("--text-only", action="store_true",
                    help="write .txt only; skip DSFTool conversion")
     p.add_argument("--keep-text", action="store_true",
@@ -351,7 +419,7 @@ def main(argv=None):
     p.add_argument("--dsftool", default="", help="path to DSFTool.exe")
     a = p.parse_args(argv)
 
-    table = TOWER_OBJECTS  # (extend for other --object families here)
+    forced_family = a.object if a.object in FAMILIES else None
 
     states = {s.strip().upper() for s in a.state.split(",") if s.strip()}
 
@@ -360,6 +428,7 @@ def main(argv=None):
     big_of = {}           # sub_name -> big_name
     total = kept = skipped = 0
     type_hist = {}
+    suppressed_hist = {}
     with open(a.csv, newline="") as f:
         header = None
         for row in _csv_dict_reader(f):
@@ -388,10 +457,18 @@ def main(argv=None):
             typ = row.get("structure_type") or ""
             type_hist[typ] = type_hist.get(typ, 0) + 1
             # An explicit ``object_path`` column (X-Plane resource path) places
-            # that exact object, bypassing height-based selection. This is the
+            # that exact object, bypassing type/height selection. This is the
             # hook for custom/public-domain models and test galleries.
             explicit = (row.get("object_path") or "").strip()
-            path = explicit if explicit else pick_object(h_eff, typ, table)
+            if explicit:
+                path = explicit
+            else:
+                path = pick_object(h_eff, typ, forced_family)
+                if path is None:  # suppressed type (building-attached, tree, ...)
+                    key = typ if typ else "(blank)"
+                    suppressed_hist[key] = suppressed_hist.get(key, 0) + 1
+                    skipped += 1
+                    continue
             sub, big, props = region_for(lat, lon)
             regions.setdefault(sub, {"props": props, "placements": []})
             regions[sub]["placements"].append((lon, lat, path))
@@ -424,6 +501,9 @@ def main(argv=None):
               f"max-objects/region={max_per}")
         print("[dry-run] top structure types:",
               sorted(type_hist.items(), key=lambda x: -x[1])[:8])
+        if suppressed_hist:
+            print("[dry-run] suppressed types:",
+                  sorted(suppressed_hist.items(), key=lambda x: -x[1]))
         return 0
 
     if kept == 0:
@@ -489,6 +569,9 @@ def main(argv=None):
     print(f"\nBuilt {n_regions} sub-region DSF files "
           f"across {len(set(big_of.values()))} big-region folders.")
     print(f"  antennas placed : {kept:,}")
+    if suppressed_hist:
+        print(f"  suppressed types: {sum(suppressed_hist.values()):,} "
+              f"({', '.join(sorted(suppressed_hist))})")
     print(f"  max per region  : {max_per:,}")
     if not a.text_only:
         print(f"  converted OK/fail: {ok:,}/{fail}")

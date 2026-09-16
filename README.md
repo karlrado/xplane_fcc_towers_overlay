@@ -126,38 +126,54 @@ folder names as literal strings, so `+20-90` would never be found. Each region i
 converted to X-Plane 12's native binary (`XPLNEDSF` magic) with Laminar's
 `DSFTool.exe --text2dsf`. No binary is written by hand.
 
-**Placeholder objects:** the FCC structure height (meters) selects the object
-— shortest object whose cap is ≥ the height:
+**Placeholder objects:** the FCC `structure_type` selects a style *family*,
+and the structure height (meters) selects the shortest object in that family
+whose cap is ≥ the height:
 
-| Height (m) | Object | Actual height |
-|---|---|---|
-| ≤ 10 | `comm_tower_10m_1` (airport scenery library) | ~10 m |
-| 11–15 | `comm_tower_15m_1` | ~15 m |
-| 16–25 | `comm_tower_25m_1` | ~25 m |
-| 26–50 | `radio_50` (900 us objects) | 50 m |
-| 51–100 | `radio_100` | 100 m |
-| 101–150 | `radio_140` | 150 m |
-| 151–200 | `radio_200` | 200 m |
-| 201–250 | `radio_250` | 250 m |
-| 251–300 | `radio_300` | 300 m |
-| 301+ | `radio_350` | 300 m (cap) |
+- **big** — TOWER, LTOWER, GTOWER, MTOWER and the `N…N` multi-structure
+  codes (e.g. `3TA2`, `2TOWER`, digits stripped first):
 
+  | Height (m) | Object | Actual height |
+  |---|---|---|
+  | ≤ 10 | `comm_tower_10m_1` (airport scenery library) | ~10 m |
+  | 11–15 | `comm_tower_15m_1` | ~15 m |
+  | 16–25 | `comm_tower_25m_1` | ~25 m |
+  | 26–50 | `radio_50` (900 us objects) | 50 m |
+  | 51–100 | `radio_100` | 100 m |
+  | 101–150 | `radio_140` | 150 m |
+  | 151–200 | `radio_200` | 200 m |
+  | 201–250 | `radio_250` | 250 m |
+  | 251+ | `radio_300` | 300 m (cap — tallest stock radio mesh) |
+
+- **small** — POLE, UPOLE, MAST: the same ramp plus finer buckets at the
+  bottom (`antenna_5m_01` ≤ 5 m, `antenna_8m_01` ≤ 8 m,
+  `comm_tower_12m_1` ≤ 12 m).
+- **suppressed (not drawn)** — building-attached and non-tower structures:
+  B, BANT, BTWR, BMAST, BPOLE, BPIPE, TANK, TREE, SILO, PIPE, STACK, SIGN
+  (≈5,140 of the 164,247 records: antennas *on* buildings, plus tanks,
+  trees, silos, stacks and signs).
+
+Blank/unknown types default to the big family (a tower beats nothing).
 The radio-tower set is **meter-scaled** — verified by measuring the OBJ
-geometry (r50 = 50 m, r100 = 100 m, r140 = 150 m, r200 = 200 m, r350 = 300 m).
-The smallest stock radio tower is 50 m, so towers ≤ 25 m use the
-`comm_tower_10m/15m/25m` family from `airport scenery/library.txt` (variants
-`_1`/`_2`/`_3` are different styles) for a much better size match.
+geometry (r50 = 50 m, r100 = 100 m, r140 = 150 m, r300 = 300 m);
+`r350`…`r650` all export the same 300 m mesh, so nothing stock exists
+above 300 m. The smallest stock radio tower is 50 m, so short structures
+use the `comm_tower_*` / `antenna_*` families from
+`airport scenery/library.txt` (variants `_1`/`_2`/`_3` are different
+styles).
 DSFTool's text format does not preserve a per-object scale, so size variety
 comes from object choice, not scaling.
+
 A CSV row may also carry an optional `object_path` column with an exact
-X-Plane resource path, which bypasses the height mapping — the hook for
-custom/public-domain models (`make_showroom.py` uses it). Swap the
-`TOWER_OBJECTS` table (or extend `--object`) once such models are available.
+X-Plane resource path, which always wins over type/height selection —
+the hook for custom/public-domain models (`make_showroom.py` uses it).
+Swap the objects in the `BIG_TOWERS` / `SMALL_MASTS` tables (or force one
+family with `--object big|small`) once better models are available.
 
 ### Build
 
 ```bat
-python build_overlay.py                :: full pack: ~1,104 regions, 164,241 towers, ~7 MB, ~7 s
+python build_overlay.py                :: full pack: ~1,101 regions, 159,101 towers, ~7 MB, ~7 s
 python build_overlay.py --state TX --max-objects 300   :: quick test subset
 python build_overlay.py --min-height 100               :: only tall structures
 python build_overlay.py --dry-run                      :: report the plan only
@@ -173,8 +189,9 @@ Requires `DSFTool.exe` (part of the X-Plane SDK,
 xcopy /e /i output\FCC_Towers "C:\X-Plane 12\Custom Scenery\FCC_Towers"
 ```
 
-(Reverting the object table is a one-line-per-bucket edit to `TOWER_OBJECTS`
-in `build_overlay.py` plus a ~7 s rebuild, if it ever becomes necessary.)
+(Reverting object choices is a one-line-per-bucket edit to the `BIG_TOWERS`
+/ `SMALL_MASTS` tables in `build_overlay.py` plus a ~7 s rebuild, if it
+ever becomes necessary.)
 
 X-Plane auto-detects the `Earth nav data` folder (same layout as a World
 Editor export) and lists the pack in
