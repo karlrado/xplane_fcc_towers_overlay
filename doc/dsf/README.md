@@ -15,6 +15,9 @@ references survive cleanup of machine-local scratch folders.
 | `source/DSFPointPool.cpp` / `.h` | Point-pool implementation — reference for how 16-bit step pools encode lon/lat/elevation. |
 | `source/README.dsf` | Laminar's DSF module README. |
 | `source/DSF2Text.cpp` | **Text-grammar authority**: the exact `--dsf2text` / `--text2dsf` line formats (`BEGIN_POLYGON %d %d %d`, `POLYGON_POINT %lf …`, winding keywords). |
+| `source/DSF2Text.h` | DSF2Text interface header. |
+| `source/DSF2TextGUI.cpp` | DSF2Text GUI front-end. |
+| `source/DSFToolCmdLine.cpp` | DSF2Text command-line front-end. |
 | `source/README.dsf2text` | DSF2Text tool README. |
 
 ## Provenance
