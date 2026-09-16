@@ -8,7 +8,8 @@ references survive cleanup of machine-local scratch folders.
 
 | File | What it is |
 |---|---|
-| `dsf_spec.txt` | Laminar's **DSF File Format Specification** (readable text). The primary reference for atom/property/command/point-pool layout. |
+| `dsf_spec.txt` | Laminar's **DSF File Format Specification** (readable text). The primary reference for atom/property/command/point-pool layout. Note: this is the XP8/9-era spec and does *not* cover later additions (e.g. the `sim/exclude_*` overlay properties) — see `dsf_usage_in_xplane.md`. |
+| `dsf_usage_in_xplane.md` | Laminar's official **"DSF Usage In X-Plane"** file-format doc for **X-Plane 11/12** (developer.x-plane.com, snapshot of 2026-09-16, HTML→Markdown). Authoritative for `sim/overlay` and the `sim/exclude_obj/_fac/_for/_bch/_net/_lin/_pol/_str` exclusion zones, `sim/require_*`, XP12 polygonal exclusions, airport-ID filtering, AGL-offset OBJ placement, and overlay restrictions. |
 | `kbd_dsf2text_reference.txt` | `DSFTool --dsf2text` output of the stock **KBDL** airport DSF — the authoritative example of the *text* grammar we emit (OBJECT_DEF, OBJECT, POLYGON_DEF, `BEGIN_POLYGON <def> 255 2`, `POLYGON_POINT <lon> <lat>`). |
 | `all_exports.txt` | A dump of the `EXPORT` lines from the default-scenery library files. Use it to look up exact object resource paths and to confirm a `lib/…` string matches an `EXPORT` name byte-for-byte (X-Plane does not normalize these). |
 | `source/DSFDefs.h` | Atom IDs, command IDs, header/footer structs (from Laminar's open-source DSF library). |
