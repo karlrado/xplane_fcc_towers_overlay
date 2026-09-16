@@ -133,11 +133,20 @@ def region_for(lat, lon):
 # ---------------------------------------------------------------------------
 # DSF text
 # ---------------------------------------------------------------------------
-def region_text(props, placements):
+def region_text(props, placements, plinth=None, plinth_texture="texture/white.pol"):
     """Build the DSF text for one sub-region.
 
     ``placements`` is a list of (lon, lat, resource_path). Object indices are
     assigned in first-seen order, matching how DSFTool numbers OBJECT_DEFs.
+
+    ``plinth`` is an optional (lon0, lat0, lon1, lat1) rectangle in ABSOLUTE
+    degrees: a flat DRAPED_POLYGON that drapes onto the terrain mesh and fills
+    the area under the placed objects -- used e.g. to give small showroom
+    towers a solid white ground to stand out against the terrain.
+    ``plinth_texture`` is the POLYGON_DEF path (a .pol in the pack).
+
+    All definitions (OBJECT_DEF + POLYGON_DEF) are emitted before any
+    geometry (OBJECT + BEGIN_POLYGON), matching the KBDL airport pack.
     """
     order = []
     index = {}
@@ -162,11 +171,105 @@ def region_text(props, placements):
         "PROPERTY sim/require_agpoint 1/0",
         "PROPERTY sim/require_object 1/0",
     ]
+    # ---- definitions (before any geometry) ----------------------------
     for path in order:
         out.append(f"OBJECT_DEF {path}")
+    if plinth is not None:
+        out.append(f"POLYGON_DEF {plinth_texture}")
+    # ---- geometry ------------------------------------------------------
     for lon, lat, path in placements:
         out.append(f"OBJECT {index[path]} {lon:.7f} {lat:.7f} 0.0")
+    if plinth is not None:
+        out.extend(plinth_text(plinth))
     return "\n".join(out) + "\n"
+
+
+def plinth_text(plinth):
+    """DSF text for one flat DRAPED_POLYGON (a solid-color ground patch).
+
+    Point coordinates are ABSOLUTE DEGREES (lon, lat) -- 2 values per point,
+    the convention both the KBDL airport pack and DSFTool's round-trip use
+    (``BEGIN_POLYGON <def_index> 255 2``). The polygon drapes onto the
+    terrain mesh, so it sits a hair above the ground with no explicit
+    elevation.
+    """
+    lon0, lat0, lon1, lat1 = plinth
+    pts = [(lon0, lat0), (lon1, lat0), (lon1, lat1), (lon0, lat1)]  # CCW from SW
+    out = ["BEGIN_POLYGON 0 255 2", "BEGIN_WINDING"]
+    for lon, lat in pts:
+        out.append(f"POLYGON_POINT {lon:.7f} {lat:.7f}")
+    out += ["END_WINDING", "END_POLYGON"]
+    return out
+
+
+def clip_plinth_to_region(rect, props):
+    """Clip a (lon0, lon1, lat0, lat1) rect to one 1-degree region.
+
+    Returns (lon0, lat0, lon1, lat1) ABSOLUTE-degree corners, or None if the
+    rect does not intersect the region (polygons cannot cross region files).
+    """
+    lon0, lon1, lat0, lat1 = rect
+    w, e = props["west"], props["east"]
+    s, n = props["south"], props["north"]
+    cx0, cx1 = max(lon0, w), min(lon1, e)
+    cy0, cy1 = max(lat0, s), min(lat1, n)
+    if cx1 <= cx0 or cy1 <= cy0:
+        return None
+    return (cx0, cy0, cx1, cy1)
+
+
+def write_white_png(path, size=64):
+    """Write a solid-white RGB PNG (standard library only)."""
+    import struct
+    import zlib
+
+    def chunk(tag, data):
+        return (struct.pack(">I", len(data)) + tag + data +
+                struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF))
+
+    ihdr = struct.pack(">IIBBBBB", size, size, 8, 2, 0, 0, 0)  # 8-bit RGB
+    row = b"\x00" + b"\xff\xff\xff" * size
+    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) +
+           chunk(b"IDAT", zlib.compress(row * size, 9)) +
+           chunk(b"IEND", b""))
+    with open(path, "wb") as f:
+        f.write(png)
+
+
+def write_white_pol(path):
+    """Write a DRAPED_POLYGON .pol that tiles a solid-white PNG.
+
+    X-Plane polygon textures are .pol (drape) files -- the KBDL airport pack
+    only ever references .pol/.lin/.fac/.for, never a raw image. This .pol
+    points at white.png (written next to it) in the same folder, modeled on
+    the stock apt_lines/safe_area_white.pol.
+    """
+    pol = (
+        "A\n"
+        "850\n"
+        "DRAPED_POLYGON\n"
+        "TEXTURE white.png\n"
+        "SURFACE asphalt\n"
+        "SCALE 4 4\n"
+    )
+    with open(path, "w") as f:
+        f.write(pol)
+
+
+def write_plinth_texture(tex_path):
+    """Write the plinth texture referenced by POLYGON_DEF.
+
+    For a .pol (the guaranteed X-Plane polygon type) we also emit the
+    solid-white PNG it tiles. A raw image path is written as-is (fallback).
+    """
+    d = os.path.dirname(tex_path)
+    if d:
+        os.makedirs(d, exist_ok=True)
+    if tex_path.lower().endswith(".pol"):
+        write_white_pol(tex_path)
+        write_white_png(os.path.join(d, "white.png"))
+    else:
+        write_white_png(tex_path)
 
 
 # ---------------------------------------------------------------------------
@@ -224,6 +327,17 @@ def main(argv=None):
                    help="comma-separated state codes to keep, e.g. TX,CA (default all)")
     p.add_argument("--max-objects", type=int, default=0,
                    help="cap total objects emitted (0 = no cap); useful for a quick test")
+    p.add_argument("--plinth-z", type=float, default=0.0,
+                   help="if > 0, also emit a flat textured ground patch "
+                        "(plinth) under the whole object set at this constant "
+                        "elevation in meters MSL (default 0 = no plinth)")
+    p.add_argument("--plinth-margin", type=float, default=125.0,
+                   help="plinth margin beyond the object bounding box, meters "
+                        "(default 125 = one tower spacing)")
+    p.add_argument("--plinth-texture", default="texture/white.pol",
+                   help="texture path for the plinth, relative to the scenery "
+                        "pack root (default: texture/white.pol, generated "
+                        "together with a solid-white white.png)")
     p.add_argument("--object", default="radio",
                    help="placeholder family (currently: radio)")
     p.add_argument("--text-only", action="store_true",
@@ -288,6 +402,21 @@ def main(argv=None):
     per_region = [len(v["placements"]) for v in regions.values()]
     max_per = max(per_region) if per_region else 0
 
+    # Optional plinth: bounding box of everything we placed, extended by the
+    # margin on each side; clipped per region when writing (a polygon cannot
+    # cross a 1-degree region boundary).
+    plinth_rect = None
+    if a.plinth_z > 0 and kept:
+        lons = [pl[0] for v in regions.values() for pl in v["placements"]]
+        lats = [pl[1] for v in regions.values() for pl in v["placements"]]
+        m_lat = a.plinth_margin / 111_000.0
+        m_lon = a.plinth_margin / (111_000.0 * math.cos(math.radians(sum(lats) / len(lats))))
+        plinth_rect = (min(lons) - m_lon, max(lons) + m_lon,
+                       min(lats) - m_lat, max(lats) + m_lat)
+        print(f"Plinth: rect lon {plinth_rect[0]:.7f}..{plinth_rect[1]:.7f}, "
+              f"lat {plinth_rect[2]:.7f}..{plinth_rect[3]:.7f}, "
+              f"z = {a.plinth_z:.1f} m MSL, texture {a.plinth_texture}")
+
     if a.dry_run:
         print(f"[dry-run] total={total} kept={kept} skipped={skipped}")
         print(f"[dry-run] sub-regions={n_regions}  "
@@ -310,6 +439,10 @@ def main(argv=None):
         os.makedirs(os.path.join(nav_root, big), exist_ok=True)
     os.makedirs(staging, exist_ok=True)
 
+    if plinth_rect is not None:
+        tex_path = os.path.join(a.out, a.plinth_texture)
+        write_plinth_texture(tex_path)
+
     dsf_tool = None if a.text_only else find_dsftool(a.dsftool)
     if dsf_tool:
         print(f"DSFTool: {dsf_tool}")
@@ -321,8 +454,14 @@ def main(argv=None):
         txt = os.path.join(staging, big, sub + ".txt")
         dsf = os.path.join(nav_root, big, sub + ".dsf")
         os.makedirs(os.path.dirname(txt), exist_ok=True)
+        plinth = None
+        if plinth_rect is not None:
+            c = clip_plinth_to_region(plinth_rect, info["props"])
+            if c is not None:
+                plinth = c
         with open(txt, "w") as f:
-            f.write(region_text(info["props"], info["placements"]))
+            f.write(region_text(info["props"], info["placements"], plinth,
+                                a.plinth_texture))
         jobs.append((txt, dsf))
 
     ok = fail = 0
