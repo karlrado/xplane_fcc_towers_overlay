@@ -431,7 +431,6 @@ def main(argv=None):
     type_hist = {}
     suppressed_hist = {}
     with open(a.csv, newline="") as f:
-        header = None
         for row in _csv_dict_reader(f):
             total += 1
             lat = _f(row.get("latitude"))
