@@ -87,6 +87,9 @@ from collections import OrderedDict
 #    The 5x5 and 10x10 series export the SAME physical files, and the
 #    physical size ramp is 50/100/150/200/250/300 m -- r350..r650 all
 #    export the 300 m mesh, so nothing stock exists above 300 m.
+# Resource strings must match each library's EXPORT name EXACTLY --
+# X-Plane does not normalize them, which is why the radio-tower paths
+# carry a leading slash and the airport-library paths do not.
 # Table key = the maximum structure height (meters) the object stands in for.
 BIG_TOWERS = OrderedDict([
     (10,  "lib/constructions/antennas/comm_tower_10m_1.obj"),

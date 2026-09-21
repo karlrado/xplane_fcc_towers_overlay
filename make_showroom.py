@@ -51,8 +51,10 @@ LON_PER_DEG = 111_000.0 * math.cos(math.radians(LAT_START))
 
 ANT = "lib/constructions/antennas/"
 RADIO10 = "/lib/global8/us/feat_RadioTower_10_10_650r"
-# NOTE: no leading slash -- must match the EXPORT name in library.txt
-# exactly; X-Plane does not normalize the resource string.
+# NOTE: the leading slash is REQUIRED -- the 900-us-objects library.txt
+# EXPORTs these names WITH a leading slash, and X-Plane matches resource
+# strings exactly (it does not normalize). The airport-library paths
+# EXPORT without one, hence the two styles.
 ANT100 = "lib/g10/US/commercial/antenna_100m.obj"  # dish antenna, 100 m
 
 # (label, [ (name, resource_path, height_m), ... ])
