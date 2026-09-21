@@ -165,13 +165,12 @@ def download(url: str, dest: Path, force: bool) -> Path:
 # ---------------------------------------------------------------------------
 def iter_records(zip_path: Path, member: str, record_type: str):
     """Yield the field list for each pipe-delimited record of `record_type`."""
-    with zipfile.ZipFile(zip_path) as zf:
-        with zf.open(member) as f:
-            for raw in f:
-                line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
-                if not line.startswith(record_type + "|"):
-                    continue
-                yield line.split("|")
+    with zipfile.ZipFile(zip_path) as zf, zf.open(member) as f:
+        for raw in f:
+            line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
+            if not line.startswith(record_type + "|"):
+                continue
+            yield line.split("|")
 
 
 def parse_float(s: str | None):
