@@ -366,6 +366,7 @@ def convert(dsf_tool, txt, dsf, pool_cache):
         r = subprocess.run(
             [dsf_tool, "--text2dsf", txt, dsf],
             capture_output=True, text=True, timeout=120,
+            check=False,  # intentional: we inspect returncode/output ourselves
         )
         ok = r.returncode == 0 and os.path.isfile(dsf)
         err = (r.stderr or r.stdout).strip()[-300:]
