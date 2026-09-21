@@ -480,8 +480,35 @@ def main(argv=None):
     regions = {}          # sub_name -> dict(props=..., placements=[(lon,lat,path,h)])
     big_of = {}           # sub_name -> big_name
     total = kept = skipped = 0
+    deduped = 0
     type_hist = {}
     suppressed_hist = {}
+    seen = set()  # dedup keys: one object per physical tower (registration)
+
+    # FCC co-located array sites list two rows per registration: one
+    # coordinate_type='T' (true/exact) and one 'A' (approximate), e.g. Northglenn
+    # 4TA1-4TA4. Keep the 'T' coordinate (the most accurate position); if a
+    # registration has no 'T' row, keep its first row. Pre-scan so the main pass
+    # below can place exactly one object per registration at the right point.
+    keeper = {}    # reg -> (lat, lon) to place
+    keeper_is_T = {}  # reg -> True once the keeper came from a 'T' row
+    with open(a.csv, newline="") as f:
+        for row in _csv_dict_reader(f):
+            reg = (row.get("registration_number") or "").strip()
+            if not reg:
+                continue
+            lat = _f(row.get("latitude"))
+            lon = _f(row.get("longitude"))
+            if lat is None or lon is None:
+                continue
+            is_T = (row.get("coordinate_type") or "").strip().upper() == "T"
+            if reg not in keeper:
+                keeper[reg] = (lat, lon)
+                keeper_is_T[reg] = is_T
+            elif is_T and not keeper_is_T[reg]:
+                keeper[reg] = (lat, lon)
+                keeper_is_T[reg] = True
+
     with open(a.csv, newline="") as f:
         for row in _csv_dict_reader(f):
             total += 1
@@ -508,6 +535,21 @@ def main(argv=None):
                 continue
             typ = row.get("structure_type") or ""
             type_hist[typ] = type_hist.get(typ, 0) + 1
+            # One object per physical tower. A registration_number is the FCC's
+            # identity for a structure; array sites list two rows per
+            # registration (one 'T' true + one 'A' approximate coordinate), e.g.
+            # Northglenn 4TA1-4TA4 -> 8 rows that are really 4 towers. Place the
+            # single 'T' keeper row and drop the rest so we don't draw phantom
+            # duplicate silhouettes. Fall back to the coordinate when there is no
+            # registration number.
+            reg = (row.get("registration_number") or "").strip()
+            dedup_key = reg if reg else (lat, lon)
+            if dedup_key in seen:
+                deduped += 1
+                continue
+            if reg and (lat, lon) != keeper.get(reg):
+                deduped += 1
+                continue
             # An explicit ``object_path`` column (X-Plane resource path) places
             # that exact object, bypassing type/height selection. This is the
             # hook for custom/public-domain models and test galleries.
@@ -525,6 +567,7 @@ def main(argv=None):
             regions.setdefault(sub, {"props": props, "placements": []})
             regions[sub]["placements"].append((lon, lat, path, h_eff))
             big_of[sub] = big
+            seen.add(dedup_key)
             kept += 1
 
     n_regions = len(regions)
@@ -547,7 +590,7 @@ def main(argv=None):
               f"z = {a.plinth_z:.1f} m MSL, texture {a.plinth_texture}")
 
     if a.dry_run:
-        print(f"[dry-run] total={total} kept={kept} skipped={skipped}")
+        print(f"[dry-run] total={total} kept={kept} skipped={skipped} deduped={deduped}")
         print(f"[dry-run] sub-regions={n_regions}  "
               f"big-regions={len(set(big_of.values()))}  "
               f"max-objects/region={max_per}")
@@ -626,7 +669,7 @@ def main(argv=None):
     total_dsf = sum(os.path.getsize(dsf) for _, dsf in jobs if os.path.isfile(dsf)) if not a.text_only else 0
     print(f"\nBuilt {n_regions} sub-region DSF files "
           f"across {len(set(big_of.values()))} big-region folders.")
-    print(f"  antennas placed : {kept:,}")
+    print(f"  antennas placed : {kept:,}  (deduped {deduped:,} duplicate antenna rows)")
     if not a.no_exclude and a.exclude_radius_ft > 0:
         print(f"  exclude zones   : {n_boxes:,} (radius {a.exclude_radius_ft:.0f} ft, "
               f"min height {a.exclude_min_height:.0f} m)")
