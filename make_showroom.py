@@ -34,6 +34,7 @@ Rows extend N with even spacing; columns extend W, ragged on the west.
 All points land in X-Plane region +40-104 (folder +40-110).
 """
 import csv
+import importlib.util
 import math
 
 # Anchor: SE corner of the grid (bottom row, first column). Rows grow
@@ -107,7 +108,6 @@ def build_rows():
 rows_out = build_rows()
 
 # sanity: everything must be in one region
-import importlib.util
 spec = importlib.util.spec_from_file_location("bo", "build_overlay.py")
 bo = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bo)
