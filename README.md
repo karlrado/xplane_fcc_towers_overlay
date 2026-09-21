@@ -10,8 +10,8 @@ tower heights.
 |---|---|
 | `fcc_towers.py` | The program (Python 3, standard library only — no dependencies) |
 | `active_antennas.csv` | Output: one row per active antenna coordinate (~164k rows) |
-| `build_overlay.py` | Phase 2: turns the CSV into an X-Plane 12 overlay scenery pack |
-| `output/FCC_Towers/` | Phase 2 output: the scenery pack (copy into `C:\X-Plane 12\Custom Scenery`) |
+| `build_overlay.py` | Step 2: turns the CSV into an X-Plane 12 overlay scenery pack |
+| `output/FCC_Towers/` | Step 2 output: the scenery pack (copy into `C:\X-Plane 12\Custom Scenery`) |
 | `synthetic_antennas.csv` | Showroom input: a small grid of sample tower objects near Akron, CO |
 | `output/FCC_TowerShowroom/` | Showroom scenery pack built from that grid (`make_showroom.py` generates the CSV) |
 | `tmp/` | Cache for downloaded zips + DSF text staging (auto-deleted after a build) |
@@ -19,7 +19,7 @@ tower heights.
 
 ## Quick start
 
-```bat
+```shell
 python fcc_towers.py
 ```
 
@@ -28,9 +28,23 @@ This downloads `r_tower.zip` (FCC complete **registration** data, ~38 MB) to
 download is a few seconds (the zip is cached in `tmp\`; use `--force` to
 re-download).
 
-Useful options:
+Then build the X-Plane overlay pack (this is the normal full build — all states,
+with the default 100 ft exclusion zones):
 
-```bat
+```shell
+python build_overlay.py
+```
+
+It writes `output\FCC_Towers\`, which you copy into `C:\X-Plane 12\Custom
+Scenery` (see the X-Plane overlay section below).
+
+## Step 1: Download FCC Towers List
+
+Run `python fcc_towers.py` (shown in Quick start above).
+
+### fcc_towers.py Options
+
+```shell
 :: Use the application-history archive (a_tower.zip, ~198 MB) instead
 python fcc_towers.py --source application
 
@@ -76,7 +90,7 @@ Inside each zip the program uses two files:
 
 Records are joined on the **File Number** field.
 
-## "Active" filter
+### "Active" filter
 
 FCC codes (see `asr_codes.pdf`):
 
@@ -93,7 +107,7 @@ Defaults:
 Override with `--status C` (or `--status C,G,D,...`) and
 `--include-archived`.
 
-## Output columns
+### Output columns
 
 `active_antennas.csv` columns:
 
@@ -112,7 +126,7 @@ Override with `--status C` (or `--status C,G,D,...`) and
 Rows for active registrations that have no coordinate record are still written
 with blank lat/lon (3 in the current data set) so nothing is silently dropped.
 
-## X-Plane 12 overlay scenery (Phase 2)
+## Step 2: Generate X-Plane 12 overlay scenery
 
 `build_overlay.py` turns `active_antennas.csv` into a normal X-Plane 12
 scenery pack that draws a placeholder tower object at every antenna location.
@@ -150,7 +164,7 @@ whose cap is ≥ the height:
   `comm_tower_12m_1` ≤ 12 m).
 - **suppressed (not drawn)** — building-attached and non-tower structures:
   B, BANT, BTWR, BMAST, BPOLE, BPIPE, TANK, TREE, SILO, PIPE, STACK, SIGN
-  (≈5,140 of the 164,247 records: antennas *on* buildings, plus tanks,
+  (≈5,140 of the 164,282 records: antennas *on* buildings, plus tanks,
   trees, silos, stacks and signs).
 
 Blank/unknown types default to the big family (a tower beats nothing).
@@ -170,10 +184,10 @@ the hook for custom/public-domain models (`make_showroom.py` uses it).
 Swap the objects in the `BIG_TOWERS` / `SMALL_MASTS` tables (or force one
 family with `--object big|small`) once better models are available.
 
-### Build
+### Scenery Build Options
 
-```bat
-python build_overlay.py                :: full pack: ~1,101 regions, 159,101 towers, ~7 MB, ~7 s
+```shell
+python build_overlay.py                :: full pack: ~1,096 regions, 155,041 towers, ~16 MB
 python build_overlay.py --state TX --max-objects 300   :: quick test subset
 python build_overlay.py --min-height 100               :: only tall structures
 python build_overlay.py --dry-run                      :: report the plan only
@@ -183,9 +197,43 @@ python build_overlay.py -h                             :: all options
 Requires `DSFTool.exe` (part of the X-Plane SDK,
 <https://developer.x-plane.com>) on your PATH, or pass `--dsftool <path>`.
 
+### Exclusion zones (suppress other packs' towers at the same site)
+
+By default the build emits a `sim/exclude_obj` rectangle around every drawn
+tower. X-Plane uses these to **cull objects from lower-priority scenery** —
+packs that come **after** `FCC_Towers` in `scenery_packs.ini` (e.g. SimHeaven /
+X-World Pro). The declaring DSF is exempt, so **our own towers always draw**
+while a co-located impostor from a lower-priority pack is suppressed. This is
+what removes the "double tower" you would otherwise see where another pack also
+places a radio tower at the same site (verified at Hitchcock, TX and the
+Northglenn array).
+
+#### Exclusion Zone Options
+
+```shell
+python build_overlay.py --exclude-radius-ft 100   :: half-size of each zone (default 100 ft)
+python build_overlay.py --no-exclude              :: emit no exclusion zones at all
+python build_overlay.py --exclude-min-height 100  :: only zone towers >= this height (m); default 0
+```
+
+Two honest trade-offs:
+
+- **Far-range under-cull.** A lower-priority impostor more than the radius
+  (default 100 ft / ~30 m) away from the FCC position is *not* culled and will
+  still double-draw at distance. If a specific site misplaces its impostor
+  that far out, raise `--exclude-radius-ft` (e.g. 200) and rebuild.
+- **Over-removal.** The zone culls *any* lower-priority object inside it, not
+  just towers — so legitimate base detail (houses, equipment) from another pack
+  near a tower may also be suppressed. That is accepted: for a pilot, the tower's
+  position, height and silhouette matter far more than the scenery at its base.
+
+The zones add most of the pack's size (~7 MB -> ~16 MB). The exclusion
+mechanism is pack-independent: it works for whatever is installed below us, so
+it does not depend on buying a particular scenery product.
+
 ### Install + test
 
-```bat
+```shell
 xcopy /e /i output\FCC_Towers "C:\X-Plane 12\Custom Scenery\FCC_Towers"
 ```
 
@@ -198,10 +246,10 @@ Editor export) and lists the pack in
 `C:\X-Plane 12\Custom Scenery\scenery_packs.ini`.
 
 **Pack order matters:** the `FCC_Towers` entry must sit **above (before) the
-simHeaven entries** in `scenery_packs.ini`. If it is listed below them,
+simHeaven (or similar) entries** in `scenery_packs.ini`. If it is listed below them,
 X-Plane silently fails to load our region files wherever simHeaven also ships
 an overlay for that region (e.g. `+40-105`, Denver metro) — nothing is logged,
-the towers just don't appear. Moving the entry above simHeaven fixed it.
+the towers just don't appear.
 
 Then fly to one of these tall, identifiable test towers:
 
@@ -217,6 +265,18 @@ from `airport scenery/library.txt` is now used for the ≤ 25 m buckets (see
 above) and is placed through the same `OBJECT_DEF` mechanism as the radio
 towers; `antenna_5m_*` / `antenna_8m_*` are also available via the
 `object_path` column.
+
+### One tower per registration (dedup)
+
+FCC co-located array sites list **two rows per registration** — one
+`coordinate_type = T` (true/exact) and one `A` (approximate), e.g. the
+Northglenn 4TA1-4TA4 array is 8 rows that are really 4 towers. `build_overlay.py`
+places **exactly one object per registration**, at its **`T` coordinate**
+(the most accurate position), and drops the `A` row. If a registration ever
+lacks a `T` row, its first row is used. This removes the phantom duplicate
+silhouettes the raw rows would otherwise produce. (~4,090 of the 164,282 rows
+are dropped this way; 97.5% of registrations have a single row and are
+unaffected.)
 
 ### Data quirks handled
 
@@ -257,7 +317,7 @@ the `make_showroom.py` header.
 
 **Build:**
 
-```bat
+```shell
 python make_showroom.py                     :: regenerate synthetic_antennas.csv
 python build_overlay.py --csv synthetic_antennas.csv ^
     --out output\FCC_TowerShowroom --plinth-z 1
@@ -268,13 +328,13 @@ drapes onto the terrain mesh.)
 
 **Install:**
 
-```bat
+```shell
 xcopy /e /i output\FCC_TowerShowroom "C:\X-Plane 12\Custom Scenery\FCC_TowerShowroom"
 ```
 
 **Uninstall:**
 
-```bat
+```shell
 rd /s /q "C:\X-Plane 12\Custom Scenery\FCC_TowerShowroom"
 ```
 
@@ -288,7 +348,7 @@ the airport; the object grid stands on it (row 1 at the south end, row 5's
 to judge the small rows (1–4).
 
 As with `FCC_Towers`: if the objects do not appear, make sure the
-`FCC_TowerShowroom` entry sits **above (before) the simHeaven entries** in
+`FCC_TowerShowroom` entry sits **above (before) the simHeaven (or similar) entries** in
 `scenery_packs.ini` (same overlay conflict, silent failure).
 
 ## Notes / known quirks
@@ -301,5 +361,8 @@ As with `FCC_Towers`: if the objects do not appear, make sure the
   active registrations have no coordinates at all.
 - A few coordinates fall outside the 48 states (Alaska, Hawaii, Puerto Rico,
   USVI, American Samoa) — that's expected for a national database.
-- The same physical tower can appear in more than one registration (e.g.
-  replacement structures); deduplication is left as a future step.
+- **Within**-registration array-element duplicates are now handled (one tower
+  per registration, preferring the `T` coordinate — see above). The same
+  **physical** tower appearing under more than one *registration number* (e.g.
+  a replacement structure) is a separate case and is *not* deduped; that remains
+  a possible future refinement.
