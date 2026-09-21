@@ -3,6 +3,9 @@ active_antennas.csv
 output/
 tmp/
 
+# Scratch / development notes and analysis artifacts
+devnotes/
+
 # Python
 __pycache__/
 *.pyc
