@@ -129,6 +129,9 @@ def download(url: str, dest: Path, force: bool) -> Path:
         log(f"Using cached {dest} ({dest.stat().st_size / 1e6:.1f} MB)")
         return dest
     dest.parent.mkdir(parents=True, exist_ok=True)
+    if force and dest.exists():
+        # Windows os.rename() cannot overwrite an existing destination.
+        dest.unlink()
     part = dest.with_name(dest.name + ".part")
     # Note: the FCC's CDN (Akamai) rejects custom/browser User-Agents with a
     # 403, so we rely on Python's default UA ("Python-urllib/..."), which is
