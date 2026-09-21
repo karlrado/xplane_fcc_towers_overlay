@@ -203,11 +203,19 @@ def region_for(lat, lon):
 # ---------------------------------------------------------------------------
 # DSF text
 # ---------------------------------------------------------------------------
-def region_text(props, placements, plinth=None, plinth_texture="texture/white.pol"):
+def region_text(props, placements, plinth=None, plinth_texture="texture/white.pol",
+                exclude_boxes=None):
     """Build the DSF text for one sub-region.
 
-    ``placements`` is a list of (lon, lat, resource_path). Object indices are
-    assigned in first-seen order, matching how DSFTool numbers OBJECT_DEFs.
+    ``placements`` is a list of (lon, lat, resource_path, height_m). Object
+    indices are assigned in first-seen order, matching how DSFTool numbers
+    OBJECT_DEFs.
+
+    ``exclude_boxes`` is a list of (west, south, east, north) rectangles in
+    absolute degrees, emitted as ``sim/exclude_obj`` right after
+    ``sim/overlay``. These cull objects from LOWER-priority scenery (packs
+    later in scenery_packs.ini); this DSF itself is unaffected, so the
+    towers it places always draw.
 
     ``plinth`` is an optional (lon0, lat0, lon1, lat1) rectangle in ABSOLUTE
     degrees: a flat DRAPED_POLYGON that drapes onto the terrain mesh and fills
@@ -220,7 +228,7 @@ def region_text(props, placements, plinth=None, plinth_texture="texture/white.po
     """
     order = []
     index = {}
-    for _, _, path in placements:
+    for _, _, path, _h in placements:
         if path not in index:
             index[path] = len(order)
             order.append(path)
@@ -238,6 +246,11 @@ def region_text(props, placements, plinth=None, plinth_texture="texture/white.po
         "PROPERTY sim/planet earth",
         "PROPERTY sim/creation_agent build_overlay",
         "PROPERTY sim/overlay 1",
+    ]
+    if exclude_boxes:
+        for w, s, e, n in exclude_boxes:
+            out.append(f"PROPERTY sim/exclude_obj {w:.7f}/{s:.7f}/{e:.7f}/{n:.7f}")
+    out += [
         "PROPERTY sim/require_agpoint 1/0",
         "PROPERTY sim/require_object 1/0",
     ]
@@ -247,11 +260,39 @@ def region_text(props, placements, plinth=None, plinth_texture="texture/white.po
     if plinth is not None:
         out.append(f"POLYGON_DEF {plinth_texture}")
     # ---- geometry ------------------------------------------------------
-    for lon, lat, path in placements:
+    for lon, lat, path, _h in placements:
         out.append(f"OBJECT {index[path]} {lon:.7f} {lat:.7f} 0.0")
     if plinth is not None:
         out.extend(plinth_text(plinth))
     return "\n".join(out) + "\n"
+
+
+def exclusion_boxes(placements, radius_ft, min_height=0.0):
+    """Build sim/exclude_obj rectangles (west, south, east, north, degrees).
+
+    One ~square zone per drawn tower, radius_ft (half-width) around the FCC
+    position.  X-Plane uses these to cull objects from lower-priority
+    scenery (packs later in scenery_packs.ini); the declaring DSF is
+    unaffected, so our own towers always draw.  Co-located placements
+    (FCC array pads, a few meters apart) share one zone.
+    """
+    r_m = radius_ft * 0.3048
+    if r_m <= 0:
+        return []
+    cell = 0.00005  # ~5 m dedupe cell
+    seen = set()
+    boxes = []
+    for lon, lat, _path, h in placements:
+        if h < min_height:
+            continue
+        key = (int(lon / cell), int(lat / cell))
+        if key in seen:
+            continue
+        seen.add(key)
+        dlat = r_m / 111_000.0
+        dlon = r_m / (111_000.0 * math.cos(math.radians(lat)))
+        boxes.append((lon - dlon, lat - dlat, lon + dlon, lat + dlat))
+    return boxes
 
 
 def plinth_text(plinth):
@@ -418,6 +459,14 @@ def main(argv=None):
                    help="leave the .txt sources alongside the .dsf files")
     p.add_argument("--dry-run", action="store_true",
                    help="report the region/object plan without writing or converting")
+    p.add_argument("--exclude-radius-ft", type=float, default=100.0,
+                   help="exclusion-zone half-size in feet around each drawn "
+                        "tower (default 100); 0 disables the zones")
+    p.add_argument("--no-exclude", action="store_true",
+                   help="emit no sim/exclude_obj zones at all")
+    p.add_argument("--exclude-min-height", type=float, default=0.0,
+                   help="only emit exclusion zones for towers at or above "
+                        "this structure height in meters (default 0 = all)")
     p.add_argument("--workers", type=int, default=6,
                    help="parallel DSFTool conversions (default 6)")
     p.add_argument("--dsftool", default="", help="path to DSFTool.exe")
@@ -428,7 +477,7 @@ def main(argv=None):
     states = {s.strip().upper() for s in a.state.split(",") if s.strip()}
 
     # ---- read + group ----------------------------------------------------
-    regions = {}          # sub_name -> dict(props=..., placements=[(lon,lat,path)])
+    regions = {}          # sub_name -> dict(props=..., placements=[(lon,lat,path,h)])
     big_of = {}           # sub_name -> big_name
     total = kept = skipped = 0
     type_hist = {}
@@ -474,7 +523,7 @@ def main(argv=None):
                     continue
             sub, big, props = region_for(lat, lon)
             regions.setdefault(sub, {"props": props, "placements": []})
-            regions[sub]["placements"].append((lon, lat, path))
+            regions[sub]["placements"].append((lon, lat, path, h_eff))
             big_of[sub] = big
             kept += 1
 
@@ -532,6 +581,7 @@ def main(argv=None):
 
     # ---- write text, then convert in parallel ---------------------------
     jobs = []  # (txt_path, dsf_path)
+    n_boxes = 0
     for sub, info in regions.items():
         big = big_of[sub]
         txt = os.path.join(staging, big, sub + ".txt")
@@ -542,9 +592,14 @@ def main(argv=None):
             c = clip_plinth_to_region(plinth_rect, info["props"])
             if c is not None:
                 plinth = c
+        boxes = []
+        if not a.no_exclude and a.exclude_radius_ft > 0:
+            boxes = exclusion_boxes(info["placements"],
+                                    a.exclude_radius_ft, a.exclude_min_height)
+            n_boxes += len(boxes)
         with open(txt, "w") as f:
             f.write(region_text(info["props"], info["placements"], plinth,
-                                a.plinth_texture))
+                                a.plinth_texture, boxes))
         jobs.append((txt, dsf))
 
     ok = fail = 0
@@ -572,6 +627,9 @@ def main(argv=None):
     print(f"\nBuilt {n_regions} sub-region DSF files "
           f"across {len(set(big_of.values()))} big-region folders.")
     print(f"  antennas placed : {kept:,}")
+    if not a.no_exclude and a.exclude_radius_ft > 0:
+        print(f"  exclude zones   : {n_boxes:,} (radius {a.exclude_radius_ft:.0f} ft, "
+              f"min height {a.exclude_min_height:.0f} m)")
     if suppressed_hist:
         print(f"  suppressed types: {sum(suppressed_hist.values()):,} "
               f"({', '.join(sorted(suppressed_hist))})")
