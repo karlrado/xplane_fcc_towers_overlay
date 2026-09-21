@@ -193,7 +193,7 @@ def region_for(lat, lon):
             return f"{lat_part}-{abs(c_lon):03d}"   # e.g. +40-110 (west)
         return f"{lat_part}+{abs(c_lon):03d}"       # e.g. +40+110 (east)
 
-    props = dict(west=s_lon, east=s_lon + 1, south=s_lat, north=s_lat + 1)
+    props = {"west": s_lon, "east": s_lon + 1, "south": s_lat, "north": s_lat + 1}
     return name(s_lat, s_lon), name(b_lat, b_lon), props
 
 
