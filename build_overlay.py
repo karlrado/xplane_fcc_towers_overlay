@@ -212,10 +212,12 @@ def region_text(props, placements, plinth=None, plinth_texture="texture/white.po
     OBJECT_DEFs.
 
     ``exclude_boxes`` is a list of (west, south, east, north) rectangles in
-    absolute degrees, emitted as ``sim/exclude_obj`` right after
-    ``sim/overlay``. These cull objects from LOWER-priority scenery (packs
-    later in scenery_packs.ini); this DSF itself is unaffected, so the
-    towers it places always draw.
+    absolute degrees, emitted as ``sim/exclude_obj`` and ``sim/exclude_fac``
+    right after ``sim/overlay``. These cull objects AND facades (building
+    polygons, autogen primitives) from LOWER-priority scenery (packs later
+    in scenery_packs.ini); this DSF itself is unaffected, so the towers it
+    places always draw. (Simpsonville, KY test: autogen impostor towers
+    required both properties to be culled.)
 
     ``plinth`` is an optional (lon0, lat0, lon1, lat1) rectangle in ABSOLUTE
     degrees: a flat DRAPED_POLYGON that drapes onto the terrain mesh and fills
@@ -250,6 +252,7 @@ def region_text(props, placements, plinth=None, plinth_texture="texture/white.po
     if exclude_boxes:
         for w, s, e, n in exclude_boxes:
             out.append(f"PROPERTY sim/exclude_obj {w:.7f}/{s:.7f}/{e:.7f}/{n:.7f}")
+            out.append(f"PROPERTY sim/exclude_fac {w:.7f}/{s:.7f}/{e:.7f}/{n:.7f}")
     out += [
         "PROPERTY sim/require_agpoint 1/0",
         "PROPERTY sim/require_object 1/0",
@@ -268,7 +271,8 @@ def region_text(props, placements, plinth=None, plinth_texture="texture/white.po
 
 
 def exclusion_boxes(placements, radius_ft, min_height=0.0):
-    """Build sim/exclude_obj rectangles (west, south, east, north, degrees).
+    """Build sim/exclude_obj + sim/exclude_fac rectangles (west, south, east,
+    north, degrees).
 
     One ~square zone per drawn tower, radius_ft (half-width) around the FCC
     position.  X-Plane uses these to cull objects from lower-priority
@@ -459,11 +463,11 @@ def main(argv=None):
                    help="leave the .txt sources alongside the .dsf files")
     p.add_argument("--dry-run", action="store_true",
                    help="report the region/object plan without writing or converting")
-    p.add_argument("--exclude-radius-ft", type=float, default=100.0,
+    p.add_argument("--exclude-radius-ft", type=float, default=300.0,
                    help="exclusion-zone half-size in feet around each drawn "
-                        "tower (default 100); 0 disables the zones")
+                        "tower (default 300); 0 disables the zones")
     p.add_argument("--no-exclude", action="store_true",
-                   help="emit no sim/exclude_obj zones at all")
+                   help="emit no exclusion zones at all")
     p.add_argument("--exclude-min-height", type=float, default=0.0,
                    help="only emit exclusion zones for towers at or above "
                         "this structure height in meters (default 0 = all)")

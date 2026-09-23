@@ -29,7 +29,7 @@ download is a few seconds (the zip is cached in `tmp\`; use `--force` to
 re-download).
 
 Then build the X-Plane overlay pack (this is the normal full build — all states,
-with the default 100 ft exclusion zones):
+with the default 300 ft exclusion zones):
 
 ```shell
 python build_overlay.py
@@ -199,19 +199,26 @@ Requires `DSFTool.exe` (part of the X-Plane SDK,
 
 ### Exclusion zones (suppress other packs' towers at the same site)
 
-By default the build emits a `sim/exclude_obj` rectangle around every drawn
-tower. X-Plane uses these to **cull objects from lower-priority scenery** —
-packs that come **after** `FCC_Towers` in `scenery_packs.ini` (e.g. SimHeaven /
-X-World Pro). The declaring DSF is exempt, so **our own towers always draw**
-while a co-located impostor from a lower-priority pack is suppressed. This is
-what removes the "double tower" you would otherwise see where another pack also
-places a radio tower at the same site (verified at Hitchcock, TX and the
-Northglenn array).
+By default the build emits a `sim/exclude_obj` **and** `sim/exclude_fac`
+rectangle around every drawn tower. X-Plane uses these to **cull objects and
+facades from lower-priority scenery** — packs that come **after** `FCC_Towers`
+in `scenery_packs.ini` (e.g. SimHeaven / X-World Pro), and X-Plane's own
+autogen primitives. The declaring DSF is exempt, so **our own towers always
+draw** while a co-located impostor from a lower-priority pack is suppressed.
+This is what removes the "double tower" you would otherwise see where another
+pack (or autogen) also places a radio tower at the same site (verified at
+Hitchcock, TX, the Northglenn array, and Simpsonville, KY).
+
+**Both properties are required.** At Simpsonville, KY an autogen impostor
+rendered next to our tower with only `sim/exclude_obj` (and even SimHeaven's
+own 1°×1° full-cell exclusions did not remove it); adding `sim/exclude_fac`
+removed it. `fac` = facades — X-Plane's class of building/autogen scenery
+(sibling to `sim/require_facade` in the DSF spec).
 
 #### Exclusion Zone Options
 
 ```shell
-python build_overlay.py --exclude-radius-ft 100   :: half-size of each zone (default 100 ft)
+python build_overlay.py --exclude-radius-ft 500   :: half-size of each zone (default 300 ft)
 python build_overlay.py --no-exclude              :: emit no exclusion zones at all
 python build_overlay.py --exclude-min-height 100  :: only zone towers >= this height (m); default 0
 ```
@@ -219,15 +226,16 @@ python build_overlay.py --exclude-min-height 100  :: only zone towers >= this he
 Two honest trade-offs:
 
 - **Far-range under-cull.** A lower-priority impostor more than the radius
-  (default 100 ft / ~30 m) away from the FCC position is *not* culled and will
+  (default 300 ft / ~90 m) away from the FCC position is *not* culled and will
   still double-draw at distance. If a specific site misplaces its impostor
-  that far out, raise `--exclude-radius-ft` (e.g. 200) and rebuild.
-- **Over-removal.** The zone culls *any* lower-priority object inside it, not
-  just towers — so legitimate base detail (houses, equipment) from another pack
-  near a tower may also be suppressed. That is accepted: for a pilot, the tower's
-  position, height and silhouette matter far more than the scenery at its base.
+  that far out, raise `--exclude-radius-ft` and rebuild.
+- **Over-removal.** The zone culls *any* lower-priority object or facade
+  inside it, not just towers — so legitimate base detail (houses, equipment)
+  from another pack near a tower may also be suppressed. That is accepted: for
+  a pilot, the tower's position, height and silhouette matter far more than
+  the scenery at its base.
 
-The zones add most of the pack's size (~7 MB -> ~16 MB). The exclusion
+The zones add most of the pack's size (~7 MB without them). The exclusion
 mechanism is pack-independent: it works for whatever is installed below us, so
 it does not depend on buying a particular scenery product.
 
