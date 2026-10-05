@@ -60,6 +60,19 @@ than scaling.
 Standard library only. Requires ``DSFTool.exe`` (X-Plane SDK / XP12 Tools)
 on the PATH.
 
+Known sites (curated supplement)
+--------------------------------
+``known_sites.csv`` (next to this script, or ``--known-sites <path>``) adds
+hand-curated towers that the FCC data does not contain -- e.g. the
+NIST WWV/WWVB time-signal masts, which predate the 1981 ASR program and
+never appear in ULS.  Columns: ``name, lat, lon, object_path (optional),
+height_m (optional), exclusion_radius_ft (optional)``.  A row with
+``object_path`` places that object; a row with ``exclusion_radius_ft`` emits
+a site-wide exclusion box around the point (for lower-priority scenery
+clusters that spread farther than the per-tower box reaches); either or
+both may be set.  Known-site rows bypass the --state / height filters
+(they are curated, not filtered data).
+
 Examples
 --------
     python build_overlay.py --state TX --max-objects 300     # quick test set
@@ -501,6 +514,12 @@ def main(argv=None):
     )
     p.add_argument("--csv", default=os.path.join(here, "active_antennas.csv"),
                    help="input CSV (default: active_antennas.csv)")
+    p.add_argument("--known-sites",
+                   default=os.path.join(here, "known_sites.csv"),
+                   help="curated known-sites supplement CSV (default: "
+                        "known_sites.csv; missing file = no known sites)")
+    p.add_argument("--no-known-sites", action="store_true",
+                   help="ignore the known-sites supplement entirely")
     p.add_argument("--out", default=os.path.join(here, "output", "FCC_Towers"),
                    help="output scenery-pack folder (default: output/FCC_Towers)")
     p.add_argument("--min-height", type=float, default=0.0,
@@ -535,7 +554,8 @@ def main(argv=None):
                    help="exclusion-zone half-size in feet around each drawn "
                         "tower (default 300); 0 disables the zones")
     p.add_argument("--no-exclude", action="store_true",
-                   help="emit no exclusion zones at all")
+                   help="emit no exclusion zones at all (per-tower and "
+                        "known-site boxes)")
     p.add_argument("--exclude-min-height", type=float, default=0.0,
                    help="only emit exclusion zones for towers at or above "
                         "this structure height in meters (default 0 = all)")
@@ -642,6 +662,32 @@ def main(argv=None):
             seen.add(dedup_key)
             kept += 1
 
+    # ---- known sites (curated supplement) -------------------------------
+    # Hand-curated towers the FCC data does not contain (e.g. the NIST
+    # WWV/WWVB time-signal masts, predating the 1981 ASR program).  Rows
+    # with an object_path become placements (and get the standard per-tower
+    # exclusion box below); rows with exclusion_radius_ft add a site-wide
+    # box for lower-priority clusters spread over more ground than the
+    # per-tower box reaches.  Curated rows bypass the state/height filters.
+    known = [] if a.no_known_sites else load_known_sites(a.known_sites)
+    known_sites_placed = 0
+    site_boxes = {}  # sub_name -> [(w, s, e, n), ...]
+    for s in known:
+        sub, big, props = region_for(s["lat"], s["lon"])
+        if s["object_path"]:
+            regions.setdefault(sub, {"props": props, "placements": []})
+            regions[sub]["placements"].append(
+                (s["lon"], s["lat"], s["object_path"], s["height_m"]))
+            big_of[sub] = big
+            known_sites_placed += 1
+        if s["box_ft"] > 0 and not a.no_exclude:
+            r_m = s["box_ft"] * 0.3048
+            dlat = r_m / 111_000.0
+            dlon = r_m / (111_000.0 * math.cos(math.radians(s["lat"])))
+            site_boxes.setdefault(sub, []).append(
+                (s["lon"] - dlon, s["lat"] - dlat,
+                 s["lon"] + dlon, s["lat"] + dlat))
+
     n_regions = len(regions)
     per_region = [len(v["placements"]) for v in regions.values()]
     max_per = max(per_region) if per_region else 0
@@ -663,6 +709,8 @@ def main(argv=None):
 
     if a.dry_run:
         print(f"[dry-run] total={total} kept={kept} skipped={skipped} deduped={deduped}")
+        print(f"[dry-run] known sites: {known_sites_placed} placements, "
+              f"{sum(len(v) for v in site_boxes.values())} site boxes")
         print(f"[dry-run] sub-regions={n_regions}  "
               f"big-regions={len(set(big_of.values()))}  "
               f"max-objects/region={max_per}")
@@ -673,7 +721,7 @@ def main(argv=None):
                   sorted(suppressed_hist.items(), key=lambda x: -x[1]))
         return 0
 
-    if kept == 0:
+    if kept == 0 and known_sites_placed == 0:
         print("No antennas matched the filters; nothing to build.")
         return 0
 
@@ -716,6 +764,9 @@ def main(argv=None):
             boxes = exclusion_boxes(info["placements"],
                                     a.exclude_radius_ft, a.exclude_min_height)
             n_boxes += len(boxes)
+        if sub in site_boxes:
+            boxes += site_boxes[sub]
+            n_boxes += len(site_boxes[sub])
         with open(txt, "w") as f:
             f.write(region_text(info["props"], info["placements"], plinth,
                                 a.plinth_texture, boxes))
@@ -749,6 +800,10 @@ def main(argv=None):
     if not a.no_exclude and a.exclude_radius_ft > 0:
         print(f"  exclude zones   : {n_boxes:,} (radius {a.exclude_radius_ft:.0f} ft, "
               f"min height {a.exclude_min_height:.0f} m)")
+    if known:
+        print(f"  known sites   : {known_sites_placed} placements, "
+              f"{sum(len(v) for v in site_boxes.values())} site boxes "
+              f"({', '.join(s['name'] for s in known if s['name'])[:120]})")
     if suppressed_hist:
         print(f"  suppressed types: {sum(suppressed_hist.values()):,} "
               f"({', '.join(sorted(suppressed_hist))})")
@@ -774,6 +829,37 @@ def _f(s):
         return float(s)
     except (TypeError, ValueError):
         return None
+
+
+def load_known_sites(path):
+    """Read the curated ``known_sites.csv`` supplement.
+
+    Columns: name, lat, lon, object_path (optional), height_m (optional),
+    exclusion_radius_ft (optional).  Rows with an object_path add a tower
+    placement; rows with an exclusion_radius_ft add a site-wide exclusion
+    box; either or both may be present.  Bad rows are skipped silently.
+    """
+    import csv
+    sites = []
+    if not os.path.isfile(path):
+        return sites
+    with open(path, newline="") as f:
+        lines = [ln for ln in f
+                 if ln.strip() and not ln.lstrip().startswith("#")]
+    for row in csv.DictReader(lines):
+        lat = _f(row.get("lat"))
+        lon = _f(row.get("lon"))
+        if (lat is None or lon is None
+                or not (-90 <= lat <= 90) or not (-180 <= lon <= 180)):
+            continue
+        sites.append({
+            "name": (row.get("name") or "").strip(),
+            "lat": lat, "lon": lon,
+            "height_m": _f(row.get("height_m")) or 100.0,
+            "object_path": (row.get("object_path") or "").strip(),
+            "box_ft": _f(row.get("exclusion_radius_ft")) or 0.0,
+        })
+    return sites
 
 
 def _csv_dict_reader(f):

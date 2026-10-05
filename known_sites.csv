@@ -1,0 +1,35 @@
+# Curated "known sites" supplement for build_overlay.py.
+#
+# Towers that the FCC ULS data does not contain.  Columns:
+#   name, lat, lon, object_path, height_m, exclusion_radius_ft
+#   - object_path        : X-Plane resource path to place (blank = no tower)
+#   - height_m           : structure height in meters (informational; also
+#                          used for the per-tower exclusion min-height test)
+#   - exclusion_radius_ft: extra site-wide exclusion box half-size in feet
+#                          centered on this point (blank/0 = none)
+# Lines starting with # and blank lines are not read (the loader uses a
+# CSV header on the first non-comment line).
+name,lat,lon,object_path,height_m,exclusion_radius_ft
+# --- NIST WWV / WWVB time-signal site, Fort Collins CO (not in FCC ULS) ---
+# WWVB (2.5 MHz): phased array of two 857 m-spaced systems, each of four
+# 122 m (400 ft) guyed-lattice towers.  Positions from OpenStreetMap
+# antenna nodes (verified against Wikipedia: en:WWVB#Antennas).  Closest
+# stock lattice is the 150 m mesh (r140).
+WWVB North 1,40.680299,-105.051608,/lib/global8/us/feat_RadioTower_10_10_650r140.obj,122,
+WWVB North 2,40.681565,-105.049479,/lib/global8/us/feat_RadioTower_10_10_650r140.obj,122,
+WWVB North 3,40.682962,-105.052631,/lib/global8/us/feat_RadioTower_10_10_650r140.obj,122,
+WWVB North 4,40.678909,-105.048461,/lib/global8/us/feat_RadioTower_10_10_650r140.obj,122,
+WWVB South 1,40.675061,-105.043691,/lib/global8/us/feat_RadioTower_10_10_650r140.obj,122,
+WWVB South 2,40.676770,-105.046567,/lib/global8/us/feat_RadioTower_10_10_650r140.obj,122,
+WWVB South 3,40.674028,-105.046037,/lib/global8/us/feat_RadioTower_10_10_650r140.obj,122,
+WWVB South 4,40.672304,-105.043151,/lib/global8/us/feat_RadioTower_10_10_650r140.obj,122,
+# WWV (5-25 MHz): single guyed mast with half-wavelength antennas per
+# frequency (~195 m at 5 MHz).  OSM's eight frequency-tagged nodes are
+# antenna positions on this one mast, not eight towers; placed at the
+# 5 MHz node (closest to the base).  200 m mesh (r200) is closest stock.
+WWV main mast,40.678375,-105.040816,/lib/global8/us/feat_RadioTower_10_10_650r200.obj,200,
+# Site-wide exclusion box (1.5 km) at the cluster centroid: suppresses the
+# SimHeaven com-tower cluster that renders each OSM antenna node as a grey
+# cell tower, spread over ~400 m -- beyond what the per-tower 300 ft boxes
+# reach.  (Blank object_path = box only, no tower drawn here.)
+WWV site exclusion,40.677633,-105.046724,,,4921
