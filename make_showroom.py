@@ -9,6 +9,9 @@ Cluster S (small, 5-25 m) -- style comparisons at comparable scale:
 Cluster T (tall, 50-300 m):
   T1: radio 10x10: r50 r100 r140 r200 r250 r300
   T2: antenna_100m (dish style, distinct from the lattice radio towers)
+  T3: generated grey monopole 50/75/100/150 (fcc_towers/monopole_*.obj,
+      tools/gen_monopole.py -- the pack's own objects, EXPORTed via its
+      library.txt, same as the FCC_Towers pack)
 
 Design notes (v2, after the v1 flight review):
   * v1 mixed 5-25 m objects in rows adjacent to 300 m giants; the small rows
@@ -83,6 +86,12 @@ CLUSTER_T = [
       for n in (50, 100, 140, 200, 250, 300)]),
     ("antenna_100m (dish style)",
      [("a100", ANT100, 100)]),
+    # Generated grey monopole set (tools/gen_monopole.py).  Resource names
+    # come from the pack's OWN library.txt (written by build_overlay.py),
+    # not a stock library -- no leading slash, exactly as EXPORTed.
+    ("monopole 50-150m (generated)",
+     [(f"mono{n}", f"fcc_towers/monopole_{n}.obj", n)
+      for n in (50, 75, 100, 150)]),
 ]
 
 ROWS = [(label, items) for label, items in CLUSTER_S]

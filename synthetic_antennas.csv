@@ -31,3 +31,7 @@ latitude,longitude,height_structure_m,state,structure_type,object_path,note
 40.1977394,-103.2167175,250,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_10_10_650r250.obj,row=radio 10x10 (50-300m) col=5 r1010_250
 40.1977394,-103.2181918,300,CO,SHOWROOM,/lib/global8/us/feat_RadioTower_10_10_650r300.obj,row=radio 10x10 (50-300m) col=6 r1010_300
 40.1988655,-103.2108206,100,CO,SHOWROOM,lib/g10/US/commercial/antenna_100m.obj,row=antenna_100m (dish style) col=1 a100
+40.1999917,-103.2108206,50,CO,SHOWROOM,fcc_towers/monopole_50.obj,row=monopole 50-150m (generated) col=1 mono50
+40.1999917,-103.2122948,75,CO,SHOWROOM,fcc_towers/monopole_75.obj,row=monopole 50-150m (generated) col=2 mono75
+40.1999917,-103.2137691,100,CO,SHOWROOM,fcc_towers/monopole_100.obj,row=monopole 50-150m (generated) col=3 mono100
+40.1999917,-103.2152433,150,CO,SHOWROOM,fcc_towers/monopole_150.obj,row=monopole 50-150m (generated) col=4 mono150

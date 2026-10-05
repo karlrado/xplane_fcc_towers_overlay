@@ -33,15 +33,21 @@ Placeholder objects
 The FCC ``structure_type`` selects a style family, and the structure height
 (meters) selects the object within that family:
 
-* big (TOWER, LTOWER, GTOWER, MTOWER, ...): <= 25 m the stock
-  ``comm_tower_10m/15m/25m`` family (airport scenery library) -- the
-  smallest stock radio tower is 50 m, so these are a much better size
-  match for short towers; > 25 m the stock radio-tower set (``r50`` ..
-  ``r300``), verified meter-scaled.  Stock radio geometry tops out at the
-  300 m mesh (``r350``..``r650`` all export the same model), so taller
-  structures clamp to the 300 m object.
+* big (TOWER, LTOWER, GTOWER, MTOWER, ...): the stock
+  ``comm_tower_10m/15m/25m`` family (airport scenery library) up to 40 m
+  -- the 25 m mesh stands in to 40 m because the smallest stock radio
+  tower is 50 m -- then the stock radio-tower set (``r50`` .. ``r300``),
+  verified meter-scaled.  Stock radio geometry tops out at the 300 m mesh
+  (``r350``..``r650`` all export the same model), so taller structures
+  clamp to the 300 m object.
 * small (POLE, MAST, UPOLE, ...): the same ramp with finer resolution at
   the bottom (5/8/12 m stock objects).
+* monopole (MTOWER, MTA, POLE, UPOLE, MAST) above 40 m: generated grey
+  monopole cell towers (``objects/monopole_50/75/100/150.obj``,
+  ``tools/gen_monopole.py``) -- stock scenery has no monopole-style
+  object above 25 m, so these fill the gap; above 150 m they clamp to
+  the 150 m mesh.  At <= 40 m the stock grey comm_tower meshes are still
+  used (better size match).
 * building-attached / non-tower types (B, BANT, BTWR, TANK, TREE, SILO,
   PIPE, STACK, SIGN, ...) are not drawn: they are antennas on other
   structures, or not towers at all.
@@ -123,6 +129,23 @@ SMALL_MASTS = OrderedDict([
 
 FAMILIES = {"big": BIG_TOWERS, "small": SMALL_MASTS}
 
+# Generated grey monopole cell towers (tools/gen_monopole.py), shipped in
+# the pack's objects/ folder and EXPORTed via library.txt as
+# fcc_towers/monopole_<H>.obj.  Stock scenery has no monopole-style
+# object above 25 m, so these cover the mono-type FCC towers the stock
+# set cannot (MTOWER/MTA/POLE/UPOLE/MAST above MONO_CUTOVER_M).  93% of
+# those towers are 40-75 m with a thin tail past 100 m; anything above
+# the tallest mesh clamps to it, same convention as the lattice set
+# clamping at r300.
+MONO_CUTOVER_M = 40.0
+MONO_TYPES = {"MTOWER", "MTA", "POLE", "UPOLE", "MAST"}
+MONOPOLES = OrderedDict([
+    (50,  "fcc_towers/monopole_50.obj"),
+    (75,  "fcc_towers/monopole_75.obj"),
+    (100, "fcc_towers/monopole_100.obj"),
+    (150, "fcc_towers/monopole_150.obj"),
+])
+
 # FCC structure_type -> style family.  Codes are normalized by stripping
 # leading/trailing digits first ("3TA2" -> "TA", "2TOWER" -> "TOWER").
 # None = suppressed (not drawn).  Unlisted codes fall back to DEFAULT_FAMILY.
@@ -140,39 +163,55 @@ TYPE_FAMILY = {
 DEFAULT_FAMILY = "big"  # blank/unknown types keep drawing (a tower beats nothing)
 
 
+def _norm_type(structure_type):
+    """Uppercase an FCC structure_type and strip leading/trailing digits
+    (structure number / structures at site): "3TA2" -> "TA"."""
+    return (structure_type or "").strip().upper().strip("0123456789")
+
+
 def family_for(structure_type):
     """Map an FCC structure_type to a style family, or None (suppressed).
 
     Leading digits (structure number) and trailing digits (structures at
     site) are stripped first: "3TA2" -> "TA", "0LTA0" -> "LTA".
     """
-    t = (structure_type or "").strip().upper()
-    t = t.strip("0123456789")
+    t = _norm_type(structure_type)
     if not t:
         return DEFAULT_FAMILY
     return TYPE_FAMILY.get(t, DEFAULT_FAMILY)
 
 
-def pick_object(height_m, structure_type, family=None):
-    """Return a resource path for a placeholder object, or None to skip.
-
-    Type-aware: ``family_for`` routes the FCC structure_type to a style
-    family (suppressed types return None); within the family, the shortest
-    object whose cap is >= the structure height is picked (a 61 m tower
-    gets the 100 m object; anything above 300 m clamps to the 300 m
-    object, the tallest stock radio mesh).  ``family`` forces one family
-    for every record (``--object``).
-    """
-    fam = family or family_for(structure_type)
-    if fam is None:
-        return None
-    table = FAMILIES[fam]
-    if not (height_m and height_m > 0):
-        height_m = 100.0  # sensible default when height is missing
+def _pick(table, height_m):
+    """Shortest object whose cap is >= height_m; above the tallest, clamp."""
     for cap in table:
         if height_m <= cap:
             return table[cap]
     return table[max(table)]
+
+
+def pick_object(height_m, structure_type, family=None):
+    """Return a resource path for a tower object, or None to skip.
+
+    Type-aware: ``family_for`` routes the FCC structure_type to a style
+    family (suppressed types return None).  FCC monopole/pole/mast types
+    (MTOWER/MTA/POLE/UPOLE/MAST) above MONO_CUTOVER_M use the generated
+    grey monopole set -- stock scenery has no tall monopole, so the stock
+    lattice would be the wrong style.  Everything else uses the stock
+    tables, picking the shortest object whose cap is >= the structure
+    height (a 61 m lattice tower gets the 100 m object; anything above
+    the tallest mesh clamps to it).  ``family`` forces one stock family
+    for every record (``--object``).
+    """
+    if not (height_m and height_m > 0):
+        height_m = 100.0  # sensible default when height is missing
+    if family:
+        return _pick(FAMILIES[family], height_m)
+    fam = family_for(structure_type)
+    if fam is None:
+        return None
+    if height_m > MONO_CUTOVER_M and _norm_type(structure_type) in MONO_TYPES:
+        return _pick(MONOPOLES, height_m)
+    return _pick(FAMILIES[fam], height_m)
 
 
 # ---------------------------------------------------------------------------
@@ -388,6 +427,32 @@ def write_plinth_texture(tex_path):
         write_white_png(os.path.join(d, "white.png"))
     else:
         write_white_png(tex_path)
+
+
+def write_pack_assets(out_root, assets_dir):
+    """Copy the generated monopole objects into the pack and write the
+    library.txt that EXPORTs them.
+
+    Every scenery pack must carry its own objects/ folder + library.txt;
+    the DSF OBJECT_DEF resource strings (fcc_towers/monopole_*.obj) are
+    resolved through the pack's own library.txt EXPORT names, and
+    X-Plane matches those strings exactly.
+    """
+    if not os.path.isdir(assets_dir) or not [
+            n for n in os.listdir(assets_dir) if n.lower().endswith(".obj")]:
+        raise SystemExit(
+            f"monopole assets not found in {assets_dir!r} -- run "
+            f"`python tools/gen_monopole.py --out objects` first.")
+    obj_dst = os.path.join(out_root, "objects")
+    os.makedirs(obj_dst, exist_ok=True)
+    for name in sorted(os.listdir(assets_dir)):
+        src = os.path.join(assets_dir, name)
+        if os.path.isfile(src):
+            shutil.copy2(src, os.path.join(obj_dst, name))
+    with open(os.path.join(out_root, "library.txt"), "w") as f:
+        f.write("A\n800\nLIBRARY\n")
+        for _cap, res in MONOPOLES.items():
+            f.write(f"EXPORT {res}\tobjects/{os.path.basename(res)}\n")
 
 
 # ---------------------------------------------------------------------------
@@ -615,6 +680,10 @@ def main(argv=None):
     # ---- layout ----------------------------------------------------------
     nav_root = os.path.join(a.out, "Earth nav data")
     staging = os.path.join(here, "tmp", "overlay_build")
+    # Every pack ships the generated monopole objects + library.txt (each
+    # scenery pack is self-contained; the DSF resolves the fcc_towers/
+    # resource names through the pack's own library.txt).
+    write_pack_assets(a.out, os.path.join(here, "objects"))
     if os.path.isdir(nav_root):
         shutil.rmtree(nav_root)
     for big in set(big_of.values()):
