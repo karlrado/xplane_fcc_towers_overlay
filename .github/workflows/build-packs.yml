@@ -14,8 +14,46 @@ permissions:
   contents: read
 
 jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install DSFTool build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq g++ zlib1g-dev
+
+      - name: Obtain DSFTool (vendored build, prebuilt fallback)
+        run: |
+          if sh tools/dsftool/build.sh; then
+            echo "Built DSFTool from vendored source"
+          else
+            echo "Source build failed; falling back to official prebuilt binary"
+            sh tools/dsftool/fetch_prebuilt.sh
+          fi
+
+      - name: Verify DSFTool
+        run: ./tools/dsftool/DSFTool --version
+
+      - name: Install test dependencies
+        run: python -m pip install pytest
+
+      # tools/dsftool on PATH so the DSFTool round-trip test (and any full
+      # build inside the suite) finds the same binary the release build uses.
+      - name: Run test suite
+        run: PATH="$PWD/tools/dsftool:$PATH" python -m pytest -q
+
   build:
     name: Build scenery pack
+    needs: test
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
