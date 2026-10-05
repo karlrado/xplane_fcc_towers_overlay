@@ -1,0 +1,5 @@
+# Normalize line endings: always store LF in git, always check out LF.
+# This keeps local Windows builds byte-identical to the CI (Linux) builds
+# and prevents CRLF/LF drift in text assets (OBJ, CSV, DSF text, scripts).
+# Git auto-detects text; binary files (PNG, DSF, ZIP, EXE) are untouched.
+* text=auto eol=lf
