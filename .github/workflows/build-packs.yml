@@ -1,4 +1,4 @@
-name: build-packs
+name: build-pack
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
     tags: ["v*"]
 
 concurrency:
-  group: build-packs-${{ github.ref }}
+  group: build-pack-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -15,8 +15,8 @@ permissions:
 
 jobs:
   build:
-    name: Build scenery packs
-    runs-on: ubuntu-latest
+    name: Build scenery pack
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,36 +46,34 @@ jobs:
       - name: Build FCC_Towers pack (fresh FCC data)
         run: python fcc_towers.py build --dsftool tools/dsftool/DSFTool
 
-      - name: Build FCC_TowerShowroom pack
-        run: python fcc_towers.py showroom --dsftool tools/dsftool/DSFTool
+      # The showroom pack is intentionally NOT built here: it is a developer
+      # convenience, not something most users want.  DIY: clone the repo and
+      # run `python fcc_towers.py showroom` (see README).
 
-      - name: Zip the packs
+      - name: Zip the pack
         run: |
           version=$(tr -d '[:space:]' < VERSION)
           (cd output && zip -qr "../FCC_Towers-$version.zip" FCC_Towers)
-          (cd output && zip -qr "../FCC_TowerShowroom-$version.zip" FCC_TowerShowroom)
           ls -l *.zip
 
-      - name: Upload pack artifacts
+      - name: Upload pack artifact
         uses: actions/upload-artifact@v4
         with:
-          name: fcc-towers-packs
-          path: |
-            FCC_Towers-*.zip
-            FCC_TowerShowroom-*.zip
+          name: fcc-towers-pack
+          path: FCC_Towers-*.zip
 
   release:
     name: Create release
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - name: Download pack artifacts
+      - name: Download pack artifact
         uses: actions/download-artifact@v4
         with:
-          name: fcc-towers-packs
+          name: fcc-towers-pack
           path: dist
 
       - name: Create GitHub release
