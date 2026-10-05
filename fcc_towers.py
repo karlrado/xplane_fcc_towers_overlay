@@ -1235,6 +1235,10 @@ def build_pack(csv_path, opts) -> int:
     write_pack_assets(opts.out, str(HERE / "objects"))
     if os.path.isdir(nav_root):
         shutil.rmtree(nav_root)
+    if os.path.isdir(staging):
+        # Drop stale text from a previous --keep-text build so the staging
+        # tree always mirrors exactly the regions of this build.
+        shutil.rmtree(staging)
     for big in set(big_of.values()):
         os.makedirs(os.path.join(nav_root, big), exist_ok=True)
     os.makedirs(staging, exist_ok=True)
