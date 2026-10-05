@@ -94,7 +94,10 @@ from collections import OrderedDict
 BIG_TOWERS = OrderedDict([
     (10,  "lib/constructions/antennas/comm_tower_10m_1.obj"),
     (15,  "lib/constructions/antennas/comm_tower_15m_1.obj"),
-    (25,  "lib/constructions/antennas/comm_tower_25m_1.obj"),
+    # 25 m mesh stands in for towers up to 40 m: at ~40 m its height
+    # error (37% short) equals the 50 m lattice's (25% tall), and the
+    # lattice is the wrong style for monopoles, so grey wins below 40 m.
+    (40,  "lib/constructions/antennas/comm_tower_25m_1.obj"),
     (50,  "/lib/global8/us/feat_RadioTower_10_10_650r50.obj"),
     (100, "/lib/global8/us/feat_RadioTower_10_10_650r100.obj"),
     (150, "/lib/global8/us/feat_RadioTower_10_10_650r140.obj"),
@@ -109,7 +112,7 @@ SMALL_MASTS = OrderedDict([
     (10,  "lib/constructions/antennas/comm_tower_10m_1.obj"),
     (12,  "lib/constructions/antennas/comm_tower_12m_1.obj"),
     (15,  "lib/constructions/antennas/comm_tower_15m_1.obj"),
-    (25,  "lib/constructions/antennas/comm_tower_25m_1.obj"),
+    (40,  "lib/constructions/antennas/comm_tower_25m_1.obj"),
     (50,  "/lib/global8/us/feat_RadioTower_10_10_650r50.obj"),
     (100, "/lib/global8/us/feat_RadioTower_10_10_650r100.obj"),
     (150, "/lib/global8/us/feat_RadioTower_10_10_650r140.obj"),
