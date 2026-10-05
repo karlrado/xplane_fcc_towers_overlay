@@ -6,6 +6,10 @@ tmp/
 # Scratch / development notes and analysis artifacts
 devnotes/
 
+# DSFTool build artifacts (see tools/dsftool/README.md)
+tools/dsftool/DSFTool
+tools/dsftool/build/
+
 # Python
 __pycache__/
 *.pyc
