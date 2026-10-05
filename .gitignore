@@ -13,3 +13,4 @@ tools/dsftool/build/
 # Python
 __pycache__/
 *.pyc
+.pytest_cache/
