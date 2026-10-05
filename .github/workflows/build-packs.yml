@@ -1,0 +1,89 @@
+name: build-packs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+concurrency:
+  group: build-packs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build scenery packs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install DSFTool build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq g++ zlib1g-dev
+
+      - name: Obtain DSFTool (vendored build, prebuilt fallback)
+        run: |
+          if sh tools/dsftool/build.sh; then
+            echo "Built DSFTool from vendored source"
+          else
+            echo "Source build failed; falling back to official prebuilt binary"
+            sh tools/dsftool/fetch_prebuilt.sh
+          fi
+
+      - name: Verify DSFTool
+        run: ./tools/dsftool/DSFTool --version
+
+      - name: Build FCC_Towers pack (fresh FCC data)
+        run: python fcc_towers.py build --dsftool tools/dsftool/DSFTool
+
+      - name: Build FCC_TowerShowroom pack
+        run: python fcc_towers.py showroom --dsftool tools/dsftool/DSFTool
+
+      - name: Zip the packs
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+          (cd output && zip -qr "../FCC_Towers-$version.zip" FCC_Towers)
+          (cd output && zip -qr "../FCC_TowerShowroom-$version.zip" FCC_TowerShowroom)
+          ls -l *.zip
+
+      - name: Upload pack artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fcc-towers-packs
+          path: |
+            FCC_Towers-*.zip
+            FCC_TowerShowroom-*.zip
+
+  release:
+    name: Create release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download pack artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: fcc-towers-packs
+          path: dist
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            --prerelease \
+            dist/*.zip
