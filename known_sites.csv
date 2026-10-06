@@ -28,8 +28,9 @@ WWVB South 4,40.672304,-105.043151,/lib/global8/us/feat_RadioTower_10_10_650r140
 # antenna positions on this one mast, not eight towers; placed at the
 # 5 MHz node (closest to the base).  200 m mesh (r200) is closest stock.
 WWV main mast,40.678375,-105.040816,/lib/global8/us/feat_RadioTower_10_10_650r200.obj,200,
-# Site-wide exclusion box (1.5 km) at the cluster centroid: suppresses the
-# SimHeaven com-tower cluster that renders each OSM antenna node as a grey
-# cell tower, spread over ~400 m -- beyond what the per-tower 300 ft boxes
-# reach.  (Blank object_path = box only, no tower drawn here.)
-WWV site exclusion,40.677633,-105.046724,,,4921
+# Site-wide exclusion box (0.9 km half-size) at the cluster centroid:
+# suppresses the SimHeaven com-tower cluster that renders each OSM antenna
+# node as a grey cell tower, spread to ~0.7 km from this centroid -- beyond
+# what the per-tower 300 ft boxes reach.  (Blank object_path = box only, no
+# tower drawn here.)
+WWV site exclusion,40.677633,-105.046724,,,3000
