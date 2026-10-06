@@ -6,6 +6,9 @@ on:
   # Monday 16:00 UTC (~10:00 Denver) so the week's refresh is likely in.
   schedule:
     - cron: '0 16 * * 1'
+    # One-off: run 2026-10-07 16:00 UTC (10:00 Denver). GHA cron is
+    # recurring-only, so this also fires every later Oct 7; remove after use.
+    - cron: '0 16 7 10 *'
   push:
     branches: [main]
     tags: ["v*", "weekly-*"]
