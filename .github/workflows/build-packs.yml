@@ -150,7 +150,7 @@ jobs:
           tag="${RELEASE_TAG:-$GITHUB_REF_NAME}"
           # Version tags are milestone pre-releases; weekly data refreshes
           # are normal releases and become GitHub's "Latest".
-          prerelease="
+          prerelease=""
           if [[ "$tag" == v* ]]; then prerelease=--prerelease; fi
           gh release create "$tag" \
             --title "$tag" \
