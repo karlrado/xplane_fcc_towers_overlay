@@ -122,8 +122,9 @@ Showroom
 --------
 ``showroom`` builds FCC_TowerShowroom: a grid of sample tower objects near
 Akron, CO (region +40-104) showing every style family and height bucket the
-pack uses.  A draped white plinth (``--plinth-z 1``) gives the grid a solid
-ground to stand out against the terrain.  The showroom never reads the
+pack uses.  A draped white plinth (see the SHOWROOM_PLINTH_* constants at
+the top of this file) gives the grid a solid ground to stand out against
+the terrain.  The showroom never reads the
 known-sites supplement (the plinth covers the bounding box of all placed
 objects, so unknown-region towers would stretch the patch).
 
@@ -165,6 +166,16 @@ HERE = Path(__file__).resolve().parent
 
 REGISTRATION_URL = "https://data.fcc.gov/download/pub/uls/complete/r_tower.zip"
 APPLICATION_URL = "https://data.fcc.gov/download/pub/uls/complete/a_tower.zip"
+
+# ---------------------------------------------------------------------------
+# Tunable presentation settings (edit here; not exposed on the command line)
+# ---------------------------------------------------------------------------
+# Showroom: the object gallery stands on a flat white "plinth" (a
+# DRAPED_POLYGON draping onto the terrain mesh) so the grid reads clearly
+# against the landscape.  The main pack never uses a plinth.
+SHOWROOM_PLINTH_Z_M = 1.0            # plinth elevation, meters MSL (0 = off)
+SHOWROOM_PLINTH_MARGIN_M = 125.0     # margin beyond the object bounding box
+SHOWROOM_PLINTH_TEXTURE = "texture/white.pol"  # .pol + generated .png in texture/
 
 
 def log(msg: str) -> None:
@@ -1351,7 +1362,7 @@ def _add_data_options(p):
                    help="where downloaded zips are cached (default: tmp/)")
 
 
-def _add_build_options(p, default_out, default_plinth_z=0.0,
+def _add_build_options(p, default_out,
                        default_csv="active_antennas.csv"):
     p.add_argument("--csv", default=default_csv,
                    help=f"input CSV (default: {default_csv})")
@@ -1385,17 +1396,6 @@ def _add_build_options(p, default_out, default_plinth_z=0.0,
                         "known_sites.csv; missing file = no known sites)")
     p.add_argument("--no-known-sites", action="store_true",
                    help="ignore the known-sites supplement entirely")
-    p.add_argument("--plinth-z", type=float, default=default_plinth_z,
-                   help="if > 0, also emit a flat textured ground patch "
-                        "(plinth) under the whole object set at this constant "
-                        "elevation in meters MSL (default 0 = no plinth)")
-    p.add_argument("--plinth-margin", type=float, default=125.0,
-                   help="plinth margin beyond the object bounding box, meters "
-                        "(default 125 = one tower spacing)")
-    p.add_argument("--plinth-texture", default="texture/white.pol",
-                   help="texture path for the plinth, relative to the scenery "
-                        "pack root (default: texture/white.pol, generated "
-                        "together with a solid-white white.png)")
     p.add_argument("--workers", type=int, default=6,
                    help="parallel DSFTool conversions (default 6)")
     p.add_argument("--dsftool", default="", help="path to DSFTool")
@@ -1433,7 +1433,7 @@ def main(argv=None) -> int:
                         help="build the FCC_TowerShowroom object gallery "
                              "(no FCC download)")
     _add_build_options(ps, HERE / "output" / "FCC_TowerShowroom",
-                       default_plinth_z=1.0, default_csv="synthetic_antennas.csv")
+                       default_csv="synthetic_antennas.csv")
 
     pc = sub.add_parser("csv",
                         help="download fresh FCC data and write the CSV "
@@ -1443,6 +1443,13 @@ def main(argv=None) -> int:
                     help="where to write the CSV (default: active_antennas.csv)")
 
     args = ap.parse_args(argv)
+
+    # The plinth is showroom presentation (SHOWROOM_PLINTH_* constants at the
+    # top of this file); build_pack reads it from the options namespace.
+    args.plinth_z = (SHOWROOM_PLINTH_Z_M if args.command == "showroom"
+                     else 0.0)
+    args.plinth_margin = SHOWROOM_PLINTH_MARGIN_M
+    args.plinth_texture = SHOWROOM_PLINTH_TEXTURE
 
     if args.command == "csv":
         fetch_csv(args)
