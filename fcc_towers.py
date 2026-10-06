@@ -1071,8 +1071,8 @@ def build_pack(csv_path, opts) -> int:
     """Read a CSV of antenna rows and build the scenery pack.
 
     ``opts`` is an argparse namespace carrying the shared build options
-    (out, min_height, max_height, state, max_objects, object, plinth_z,
-    plinth_margin, plinth_texture, text_only, keep_text, dry_run,
+    (out, min_height, max_height, state, max_objects, object, radio_only,
+    plinth_z, plinth_margin, plinth_texture, text_only, keep_text, dry_run,
     exclude_radius_ft, no_exclude, exclude_min_height, workers, dsftool,
     known_sites, no_known_sites).
     """
@@ -1084,6 +1084,7 @@ def build_pack(csv_path, opts) -> int:
     big_of = {}           # sub_name -> big_name
     total = kept = skipped = 0
     deduped = 0
+    radio_skipped = 0
     type_hist = {}
     suppressed_hist = {}
     seen = set()  # dedup keys: one object per physical tower (registration)
@@ -1166,6 +1167,14 @@ def build_pack(csv_path, opts) -> int:
                     suppressed_hist[key] = suppressed_hist.get(key, 0) + 1
                     skipped += 1
                     continue
+                # --radio-only: keep only the tall red/white lattice radio
+                # towers (the stock feat_RadioTower set); grey monopoles and
+                # comm-tower-style objects are skipped.  Explicit object_path
+                # rows (e.g. known sites) are unaffected.
+                if opts.radio_only and "feat_RadioTower" not in path:
+                    radio_skipped += 1
+                    skipped += 1
+                    continue
             sub, big, props = region_for(lat, lon)
             regions.setdefault(sub, {"props": props, "placements": []})
             regions[sub]["placements"].append((lon, lat, path, h_eff))
@@ -1231,6 +1240,9 @@ def build_pack(csv_path, opts) -> int:
         if suppressed_hist:
             print("[dry-run] suppressed types:",
                   sorted(suppressed_hist.items(), key=lambda x: -x[1]))
+        if radio_skipped:
+            print(f"[dry-run] radio-only: skipped {radio_skipped} "
+                  f"non-lattice objects")
         return 0
 
     if kept == 0 and known_sites_placed == 0:
@@ -1324,6 +1336,9 @@ def build_pack(csv_path, opts) -> int:
     if suppressed_hist:
         print(f"  suppressed types: {sum(suppressed_hist.values()):,} "
               f"({', '.join(sorted(suppressed_hist))})")
+    if radio_skipped:
+        print(f"  radio-only      : skipped {radio_skipped:,} "
+              f"non-lattice objects")
     print(f"  max per region  : {max_per:,}")
     if not opts.text_only:
         print(f"  converted OK/fail: {ok:,}/{fail}")
@@ -1381,6 +1396,11 @@ def _add_build_options(p, default_out,
     p.add_argument("--object", default="",
                    help="force one style family for every record: big or "
                         "small (default: pick per FCC structure_type)")
+    p.add_argument("--radio-only", action="store_true",
+                   help="draw only the tall red/white lattice radio towers; "
+                        "skip grey monopole and comm-tower-style objects "
+                        "(explicit object_path rows, e.g. known sites, "
+                        "still draw)")
     p.add_argument("--exclude-radius-ft", type=float, default=300.0,
                    help="exclusion-zone half-size in feet around each drawn "
                         "tower (default 300); 0 disables the zones")

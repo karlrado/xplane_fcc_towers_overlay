@@ -247,6 +247,39 @@ class TestBuildOptions:
         assert "fcc_towers/monopole" not in t       # routing bypassed
         assert "OBJECT_DEF /lib/global8/us/feat_RadioTower_10_10_650r50.obj" in t
 
+    def test_radio_only(self, fcc_zip, known_sites_csv, tmp_path, stage_text):
+        self._run(fcc_zip, known_sites_csv, tmp_path, "--radio-only")
+        t = stage_text("+29-096")
+        assert len(objects(t)) == 2                # GTOWER r200 + TOWER r100
+        assert "comm_tower" not in t               # 12 m POLE skipped
+        assert ("OBJECT_DEF /lib/global8/us/"
+                "feat_RadioTower_10_10_650r200.obj") in t
+        assert ("OBJECT_DEF /lib/global8/us/"
+                "feat_RadioTower_10_10_650r100.obj") in t
+        t = stage_text("+40-106")
+        assert len(objects(t)) == 1                # TOWER 55 m -> r100
+        assert "monopole" not in t
+        assert ("OBJECT_DEF /lib/global8/us/"
+                "feat_RadioTower_10_10_650r100.obj") in t
+        t = stage_text("+40-105")
+        assert len(objects(t)) == 2                # TOWER r100 + known site
+        assert ("OBJECT_DEF lib/constructions/antennas/comm_tower_25m_1.obj"
+                ) in t
+
+    def test_radio_only_dry_run(self, fcc_zip, known_sites_csv, tmp_path):
+        out = tmp_path / "pack"
+        args = ["build",
+                "--zip-path", str(fcc_zip),
+                "--csv-out", "active_antennas.csv",
+                "--out", str(out),
+                "--known-sites", str(known_sites_csv),
+                "--dry-run", "--radio-only"]
+        p = run_script(args, cwd=tmp_path)
+        assert p.returncode == 0, p.stdout + p.stderr
+        assert "kept=4" in p.stdout
+        assert "radio-only: skipped 6 non-lattice objects" in p.stdout
+        assert not out.exists()                    # nothing written
+
     def test_dry_run(self, fcc_zip, known_sites_csv, tmp_path):
         out = tmp_path / "pack"
         args = ["build",
