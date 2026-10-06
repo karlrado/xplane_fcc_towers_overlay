@@ -6,6 +6,8 @@ object-selection, region, and exclusion-zone math.
 
 import math
 
+import pytest
+
 import fcc_towers as ft
 
 
@@ -353,3 +355,53 @@ class TestLoadAdditionalSites:
 
     def test_missing_file(self, tmp_path):
         assert ft.load_additional_sites(str(tmp_path / "nope.csv")) == []
+
+
+# ---------------------------------------------------------------------------
+# DSFTool discovery
+# ---------------------------------------------------------------------------
+
+def _fake_vendored(tmp_path):
+    """Create an executable fake binary at <tmp>/tools/dsftool/DSFTool."""
+    vend = tmp_path / "tools" / "dsftool" / "DSFTool"
+    vend.parent.mkdir(parents=True)
+    vend.write_text("fake dsftool")
+    vend.chmod(0o755)   # required for the os.access(X_OK) check on POSIX
+    return vend
+
+
+class TestFindDsfTool:
+    def test_explicit_path_wins(self, tmp_path, monkeypatch):
+        p = tmp_path / "mytool"
+        p.write_text("x")
+        monkeypatch.setattr(ft.shutil, "which", lambda name: None)
+        assert ft.find_dsftool(str(p)) == str(p)
+
+    def test_explicit_missing_raises(self):
+        with pytest.raises(SystemExit):
+            ft.find_dsftool(str("/no/such/dsftool"))
+
+    def test_path_wins_over_vendored(self, tmp_path, monkeypatch):
+        vend = _fake_vendored(tmp_path)
+        onpath = tmp_path / "bin" / "DSFTool.exe"
+        onpath.parent.mkdir()
+        onpath.write_text("fake")
+        monkeypatch.setattr(
+            ft.shutil, "which",
+            lambda name: str(onpath) if name == "DSFTool.exe" else None)
+        monkeypatch.setattr(ft, "HERE", tmp_path)
+        assert ft.find_dsftool("") == str(onpath)
+        assert ft.find_dsftool("") != str(vend)
+
+    def test_vendored_fallback(self, tmp_path, monkeypatch):
+        vend = _fake_vendored(tmp_path)
+        monkeypatch.setattr(ft.shutil, "which", lambda name: None)
+        monkeypatch.setattr(ft, "HERE", tmp_path)
+        assert ft.find_dsftool("") == str(vend)
+
+    def test_none_found_raises(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(ft.shutil, "which", lambda name: None)
+        monkeypatch.setattr(ft, "HERE", tmp_path)
+        with pytest.raises(SystemExit) as exc:
+            ft.find_dsftool("")
+        assert "tools/dsftool/build.sh" in str(exc.value)

@@ -925,8 +925,14 @@ def write_pack_assets(out_root, assets_dir):
 # DSFTool discovery / conversion
 # ===========================================================================
 def find_dsftool(explicit):
-    """Locate DSFTool: an explicit --dsftool path wins, otherwise it must
-    be runnable from the PATH."""
+    """Locate DSFTool.
+
+    Search order:
+      1. an explicit --dsftool <path> (must exist); otherwise
+      2. DSFTool.exe / DSFTool on the PATH; otherwise
+      3. a binary built from the vendored source in this repo
+         (``sh tools/dsftool/build.sh``).
+    """
     if explicit:
         if os.path.isfile(explicit):
             return explicit
@@ -934,12 +940,20 @@ def find_dsftool(explicit):
     tool = shutil.which("DSFTool.exe") or shutil.which("DSFTool")
     if tool:
         return tool
+    for name in ("DSFTool", "DSFTool.exe"):
+        local = HERE / "tools" / "dsftool" / name
+        if local.is_file() and os.access(local, os.X_OK):
+            return str(local)
     raise SystemExit(
-        "Could not find DSFTool on the PATH.\n"
-        "Get DSFTool.exe from https://developer.x-plane.com (part of the\n"
-        "X-Plane SDK) and add its folder to your PATH, or pass an explicit\n"
-        "path with --dsftool <path>.\n"
-        "Or build the pack text files only with --text-only."
+        "Could not find DSFTool.\n"
+        "Options:\n"
+        "  1. Build the vendored copy:  sh tools/dsftool/build.sh\n"
+        "     (needs a C/C++ compiler and the zlib dev package; see\n"
+        "      tools/dsftool/README.md for requirements and prebuilt\n"
+        "      download links)\n"
+        "  2. Put a DSFTool binary on your PATH, or pass an explicit\n"
+        "     path with --dsftool <path>.\n"
+        "  3. Or write the region text files only, with --text-only."
     )
 
 
