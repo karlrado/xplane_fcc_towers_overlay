@@ -1,7 +1,7 @@
 # DSF reference material
 
 Reference material for building and debugging the X-Plane 12 DSF overlay in
-`build_overlay.py`. Kept here so the project is self-documenting and the
+`fcc_towers.py`. Kept here so the project is self-documenting and the
 references survive cleanup of machine-local scratch folders.
 
 ## Files
