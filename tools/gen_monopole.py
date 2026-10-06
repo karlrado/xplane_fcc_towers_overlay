@@ -48,7 +48,7 @@ Usage
     python tools/gen_monopole.py --heights 60 90 --out somewhere/else
 
 Writes <out>/monopole_<H>.obj per height + one shared <out>/monopole_tex.png.
-The pack's library.txt (written by build_overlay.py) EXPORTs them as
+The pack's library.txt (written by fcc_towers.py) EXPORTs them as
 fcc_towers/monopole_<H>.obj.
 """
 import argparse
