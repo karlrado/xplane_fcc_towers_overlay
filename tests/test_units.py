@@ -308,7 +308,7 @@ class TestRegionText:
 
 
 # ---------------------------------------------------------------------------
-# Plinth clipping + known sites
+# Plinth clipping + additional sites
 # ---------------------------------------------------------------------------
 
 class TestClipPlinth:
@@ -330,7 +330,7 @@ class TestClipPlinth:
                                         PROPS) is None
 
 
-class TestLoadKnownSites:
+class TestLoadAdditionalSites:
     def test_valid_and_bad_rows(self, tmp_path):
         p = tmp_path / "ks.csv"
         p.write_text(
@@ -340,7 +340,7 @@ class TestLoadKnownSites:
             "Beta,40.2,-104.8,,,\n"
             "Bad,999.0,-104.9,lib/x.obj,55,0\n",
             encoding="utf-8")
-        sites = ft.load_known_sites(str(p))
+        sites = ft.load_additional_sites(str(p))
         assert [s["name"] for s in sites] == ["Alpha", "Beta"]
         alpha = sites[0]
         assert alpha["object_path"] == "lib/x.obj"
@@ -352,4 +352,4 @@ class TestLoadKnownSites:
         assert beta["box_ft"] == 0.0          # default
 
     def test_missing_file(self, tmp_path):
-        assert ft.load_known_sites(str(tmp_path / "nope.csv")) == []
+        assert ft.load_additional_sites(str(tmp_path / "nope.csv")) == []

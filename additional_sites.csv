@@ -1,4 +1,4 @@
-# Curated "known sites" supplement for build_overlay.py.
+# Curated "additional sites" supplement for fcc_towers.py.
 #
 # Towers that the FCC ULS data does not contain.  Columns:
 #   name, lat, lon, object_path, height_m, exclusion_radius_ft

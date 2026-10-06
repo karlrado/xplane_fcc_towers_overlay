@@ -2,7 +2,7 @@
 zip (hermetic -- no network, no real FCC data).
 
 Covers the CLI option surface, the CSV pipeline, dedup, region routing,
-exclusion zones, known sites, assets, and the showroom build.  The
+exclusion zones, additional sites, assets, and the showroom build.  The
 DSFTool round-trip lives in test_dsf.py.
 """
 
@@ -179,26 +179,26 @@ class TestBuildDefaults:
 
 
 class TestBuildOptions:
-    def _run(self, fcc_zip, known_sites_csv, tmp_path, *extra):
+    def _run(self, fcc_zip, additional_sites_csv, tmp_path, *extra):
         out = tmp_path / "pack"
         args = ["build",
                 "--zip-path", str(fcc_zip),
                 "--csv-out", "active_antennas.csv",
                 "--out", str(out),
-                "--known-sites", str(known_sites_csv),
+                "--additional-sites", str(additional_sites_csv),
                 "--text-only", "--keep-text"] + list(extra)
         p = run_script(args, cwd=tmp_path)
         assert p.returncode == 0, p.stdout + p.stderr
         return out
 
-    def test_no_exclude(self, fcc_zip, known_sites_csv, tmp_path, stage_text):
-        self._run(fcc_zip, known_sites_csv, tmp_path, "--no-exclude")
+    def test_no_exclude(self, fcc_zip, additional_sites_csv, tmp_path, stage_text):
+        self._run(fcc_zip, additional_sites_csv, tmp_path, "--no-exclude")
         for sub in ("+29-096", "+40-106", "+40-105"):
             assert len(EXCL.findall(stage_text(sub))) == 0
 
-    def test_exclude_radius_100(self, fcc_zip, known_sites_csv, tmp_path, stage_text):
-        self._run(fcc_zip, known_sites_csv, tmp_path,
-                  "--exclude-radius-ft", "100", "--no-known-sites")
+    def test_exclude_radius_100(self, fcc_zip, additional_sites_csv, tmp_path, stage_text):
+        self._run(fcc_zip, additional_sites_csv, tmp_path,
+                  "--exclude-radius-ft", "100", "--no-additional-sites")
         t = stage_text("+40-105")                  # only the DUP tower now
         lines = [ln for ln in t.splitlines()
                  if ln.startswith("PROPERTY sim/exclude_obj ")]
@@ -208,48 +208,48 @@ class TestBuildOptions:
         # 1e-6: the text format rounds coordinates to 7 decimal places
         assert abs((n - s) - 2 * dlat) < 1e-6
 
-    def test_exclude_min_height(self, fcc_zip, known_sites_csv, tmp_path, stage_text):
-        self._run(fcc_zip, known_sites_csv, tmp_path,
+    def test_exclude_min_height(self, fcc_zip, additional_sites_csv, tmp_path, stage_text):
+        self._run(fcc_zip, additional_sites_csv, tmp_path,
                   "--exclude-min-height", "100")
         # +29-096: TALL-LAT (200) + NOHEIGHT (default 100) box; SMALL (12) not
         t = stage_text("+29-096")
         assert len(EXCL.findall(t)) == 4
 
-    def test_max_objects(self, fcc_zip, known_sites_csv, tmp_path, stage_text):
-        self._run(fcc_zip, known_sites_csv, tmp_path,
-                  "--max-objects", "4", "--no-known-sites")
+    def test_max_objects(self, fcc_zip, additional_sites_csv, tmp_path, stage_text):
+        self._run(fcc_zip, additional_sites_csv, tmp_path,
+                  "--max-objects", "4", "--no-additional-sites")
         total = sum(objects_or_zero(stage_text, s)
                     for s in ("+29-096", "+40-106", "+40-105"))
         assert total == 4
 
-    def test_state_filter(self, fcc_zip, known_sites_csv, tmp_path, stage_text):
-        self._run(fcc_zip, known_sites_csv, tmp_path, "--state", "TX")
+    def test_state_filter(self, fcc_zip, additional_sites_csv, tmp_path, stage_text):
+        self._run(fcc_zip, additional_sites_csv, tmp_path, "--state", "TX")
         assert len(objects(stage_text("+29-096"))) == 3
         # CO towers filtered out; the known site bypasses state filters
         assert len(objects(stage_text("+40-105"))) == 1
         with pytest.raises(AssertionError):
             stage_text("+40-106")
 
-    def test_min_height(self, fcc_zip, known_sites_csv, tmp_path, stage_text):
-        self._run(fcc_zip, known_sites_csv, tmp_path, "--min-height", "50")
+    def test_min_height(self, fcc_zip, additional_sites_csv, tmp_path, stage_text):
+        self._run(fcc_zip, additional_sites_csv, tmp_path, "--min-height", "50")
         # SMALL (12 m) and MONO50 (45 m) drop out; everything else stays
         assert len(objects(stage_text("+29-096"))) == 2
         assert len(objects(stage_text("+40-106"))) == 5
 
-    def test_max_height(self, fcc_zip, known_sites_csv, tmp_path, stage_text):
-        self._run(fcc_zip, known_sites_csv, tmp_path, "--max-height", "100")
+    def test_max_height(self, fcc_zip, additional_sites_csv, tmp_path, stage_text):
+        self._run(fcc_zip, additional_sites_csv, tmp_path, "--max-height", "100")
         # TALL-LAT (200), MONO150 (120), MONOCLAMP (400) drop out
         assert len(objects(stage_text("+29-096"))) == 2
         assert len(objects(stage_text("+40-106"))) == 4
 
-    def test_object_family_override(self, fcc_zip, known_sites_csv, tmp_path, stage_text):
-        self._run(fcc_zip, known_sites_csv, tmp_path, "--object", "small")
+    def test_object_family_override(self, fcc_zip, additional_sites_csv, tmp_path, stage_text):
+        self._run(fcc_zip, additional_sites_csv, tmp_path, "--object", "small")
         t = stage_text("+40-106")
         assert "fcc_towers/monopole" not in t       # routing bypassed
         assert "OBJECT_DEF /lib/global8/us/feat_RadioTower_10_10_650r50.obj" in t
 
-    def test_radio_only(self, fcc_zip, known_sites_csv, tmp_path, stage_text):
-        self._run(fcc_zip, known_sites_csv, tmp_path, "--radio-only")
+    def test_radio_only(self, fcc_zip, additional_sites_csv, tmp_path, stage_text):
+        self._run(fcc_zip, additional_sites_csv, tmp_path, "--radio-only")
         t = stage_text("+29-096")
         assert len(objects(t)) == 2                # GTOWER r200 + TOWER r100
         assert "comm_tower" not in t               # 12 m POLE skipped
@@ -267,13 +267,13 @@ class TestBuildOptions:
         assert ("OBJECT_DEF lib/constructions/antennas/comm_tower_25m_1.obj"
                 ) in t
 
-    def test_radio_only_dry_run(self, fcc_zip, known_sites_csv, tmp_path):
+    def test_radio_only_dry_run(self, fcc_zip, additional_sites_csv, tmp_path):
         out = tmp_path / "pack"
         args = ["build",
                 "--zip-path", str(fcc_zip),
                 "--csv-out", "active_antennas.csv",
                 "--out", str(out),
-                "--known-sites", str(known_sites_csv),
+                "--additional-sites", str(additional_sites_csv),
                 "--dry-run", "--radio-only"]
         p = run_script(args, cwd=tmp_path)
         assert p.returncode == 0, p.stdout + p.stderr
@@ -281,13 +281,13 @@ class TestBuildOptions:
         assert "radio-only: skipped 6 non-lattice objects" in p.stdout
         assert not out.exists()                    # nothing written
 
-    def test_dry_run(self, fcc_zip, known_sites_csv, tmp_path):
+    def test_dry_run(self, fcc_zip, additional_sites_csv, tmp_path):
         out = tmp_path / "pack"
         args = ["build",
                 "--zip-path", str(fcc_zip),
                 "--csv-out", "active_antennas.csv",
                 "--out", str(out),
-                "--known-sites", str(known_sites_csv),
+                "--additional-sites", str(additional_sites_csv),
                 "--dry-run"]
         p = run_script(args, cwd=tmp_path)
         assert p.returncode == 0, p.stdout + p.stderr
@@ -296,18 +296,18 @@ class TestBuildOptions:
         assert "deduped=1" in p.stdout
         assert not out.exists()                     # nothing written
 
-    def test_no_known_sites(self, fcc_zip, known_sites_csv, tmp_path, stage_text):
-        self._run(fcc_zip, known_sites_csv, tmp_path, "--no-known-sites")
+    def test_no_additional_sites(self, fcc_zip, additional_sites_csv, tmp_path, stage_text):
+        self._run(fcc_zip, additional_sites_csv, tmp_path, "--no-additional-sites")
         t = stage_text("+40-105")
         assert len(objects(t)) == 1                 # DUP only
         assert "comm_tower_25m_1" not in t
         assert len(EXCL.findall(t)) == 2            # one tower box
 
-    def test_deterministic_output(self, fcc_zip, known_sites_csv, tmp_path,
+    def test_deterministic_output(self, fcc_zip, additional_sites_csv, tmp_path,
                                   stage_text):
-        self._run(fcc_zip, known_sites_csv, tmp_path, "--out", "pack1")
+        self._run(fcc_zip, additional_sites_csv, tmp_path, "--out", "pack1")
         first = {s: stage_text(s) for s in ("+29-096", "+40-106", "+40-105")}
-        self._run(fcc_zip, known_sites_csv, tmp_path, "--out", "pack2")
+        self._run(fcc_zip, additional_sites_csv, tmp_path, "--out", "pack2")
         for sub, text in first.items():
             assert stage_text(sub) == text, sub
 

@@ -342,15 +342,15 @@ the `make_showroom.py` header.
 ```shell
 python make_showroom.py                     :: regenerate synthetic_antennas.csv
 python build_overlay.py --csv synthetic_antennas.csv ^
-    --out output\FCC_TowerShowroom --plinth-z 1 --no-known-sites
+    --out output\FCC_TowerShowroom --plinth-z 1 --no-additional-sites
 ```
 
 (`--plinth-z 1` merely switches the draped white plinth on; the polygon
 drapes onto the terrain mesh.)
 
-(`--no-known-sites` keeps the showroom to the Akron grid: the plinth covers
-the bounding box of all placed objects, so without it the white patch would
-stretch to wherever the known sites are.)
+(`--no-additional-sites` keeps the showroom to the Akron grid: the plinth
+covers the bounding box of all placed objects, so without it the white patch
+would stretch to wherever the additional sites are.)
 
 **Install:**
 

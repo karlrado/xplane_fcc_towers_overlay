@@ -105,18 +105,18 @@ models, test galleries).  DSFTool's text format does not preserve a
 per-object *scale*, so size variety is achieved by object choice rather
 than scaling.
 
-Known sites (curated supplement)
---------------------------------
-``known_sites.csv`` (next to this script, or ``--known-sites <path>``) adds
-hand-curated towers that the FCC data does not contain -- e.g. the
-NIST WWV/WWVB time-signal masts, which predate the 1981 ASR program and
-never appear in ULS.  Columns: ``name, lat, lon, object_path (optional),
-height_m (optional), exclusion_radius_ft (optional)``.  A row with
-``object_path`` places that object; a row with ``exclusion_radius_ft`` emits
-a site-wide exclusion box around the point (for lower-priority scenery
-clusters that spread farther than the per-tower box reaches); either or
-both may be set.  Known-site rows bypass the --state / height filters
-(they are curated, not filtered data).
+Additional sites (curated supplement)
+-------------------------------------
+``additional_sites.csv`` (next to this script, or
+``--additional-sites <path>``) adds hand-curated towers that the FCC data
+does not contain -- e.g. the NIST WWV/WWVB time-signal masts, which predate
+the 1981 ASR program and never appear in ULS.  Columns: ``name, lat, lon,
+object_path (optional), height_m (optional), exclusion_radius_ft
+(optional)``.  A row with ``object_path`` places that object; a row with
+``exclusion_radius_ft`` emits a site-wide exclusion box around the point
+(for lower-priority scenery clusters that spread farther than the per-tower
+box reaches); either or both may be set.  Additional-site rows bypass the
+--state / height filters (they are curated, not filtered data).
 
 Showroom
 --------
@@ -125,8 +125,8 @@ Akron, CO (region +40-104) showing every style family and height bucket the
 pack uses.  A draped white plinth (see the SHOWROOM_PLINTH_* constants at
 the top of this file) gives the grid a solid ground to stand out against
 the terrain.  The showroom never reads the
-known-sites supplement (the plinth covers the bounding box of all placed
-objects, so unknown-region towers would stretch the patch).
+additional-sites supplement (the plinth covers the bounding box of all
+placed objects, so unknown-region towers would stretch the patch).
 
 Design history and rationale (exclusion-zone tests, dedup, object
 selection, DSF format details) live in DESIGN.md.
@@ -959,7 +959,7 @@ def convert(dsf_tool, txt, dsf, pool_cache):
 
 
 # ===========================================================================
-# Known sites (curated supplement)
+# Additional sites (curated supplement)
 # ===========================================================================
 def _f(s):
     if s is None:
@@ -970,8 +970,8 @@ def _f(s):
         return None
 
 
-def load_known_sites(path):
-    """Read the curated ``known_sites.csv`` supplement.
+def load_additional_sites(path):
+    """Read the curated ``additional_sites.csv`` supplement.
 
     Columns: name, lat, lon, object_path (optional), height_m (optional),
     exclusion_radius_ft (optional).  Rows with an object_path add a tower
@@ -1124,7 +1124,7 @@ def build_pack(csv_path, opts) -> int:
     (out, min_height, max_height, state, max_objects, object, radio_only,
     plinth_z, plinth_margin, plinth_texture, text_only, keep_text, dry_run,
     exclude_radius_ft, no_exclude, exclude_min_height, workers, dsftool,
-    known_sites, no_known_sites).
+    additional_sites, no_additional_sites).
     """
     forced_family = opts.object if opts.object in FAMILIES else None
     states = {s.strip().upper() for s in opts.state.split(",") if s.strip()}
@@ -1220,7 +1220,7 @@ def build_pack(csv_path, opts) -> int:
                 # --radio-only: keep only the tall red/white lattice radio
                 # towers (the stock feat_RadioTower set); grey monopoles and
                 # comm-tower-style objects are skipped.  Explicit object_path
-                # rows (e.g. known sites) are unaffected.
+                # rows (e.g. additional sites) are unaffected.
                 if opts.radio_only and "feat_RadioTower" not in path:
                     radio_skipped += 1
                     skipped += 1
@@ -1237,24 +1237,27 @@ def build_pack(csv_path, opts) -> int:
             seen.add(dedup_key)
             kept += 1
 
-    # ---- known sites (curated supplement) -------------------------------
+    # ---- additional sites (curated supplement) --------------------------
     # Hand-curated towers the FCC data does not contain (e.g. the NIST
     # WWV/WWVB time-signal masts, predating the 1981 ASR program).  Rows
     # with an object_path become placements (and get the standard per-tower
     # exclusion box below); rows with exclusion_radius_ft add a site-wide
     # box for lower-priority clusters spread over more ground than the
     # per-tower box reaches.  Curated rows bypass the state/height filters.
-    known = [] if opts.no_known_sites else load_known_sites(opts.known_sites)
-    known_sites_placed = 0
+    if opts.no_additional_sites:
+        additional = []
+    else:
+        additional = load_additional_sites(opts.additional_sites)
+    additional_sites_placed = 0
     site_boxes = {}  # sub_name -> [(w, s, e, n), ...]
-    for s in known:
+    for s in additional:
         sub, big, props = region_for(s["lat"], s["lon"])
         if s["object_path"]:
             regions.setdefault(sub, {"props": props, "placements": []})
             regions[sub]["placements"].append(
                 (s["lon"], s["lat"], s["object_path"], s["height_m"]))
             big_of[sub] = big
-            known_sites_placed += 1
+            additional_sites_placed += 1
         if s["box_ft"] > 0 and not opts.no_exclude:
             r_m = s["box_ft"] * 0.3048
             dlat = r_m / 111_000.0
@@ -1285,8 +1288,8 @@ def build_pack(csv_path, opts) -> int:
 
     if opts.dry_run:
         print(f"[dry-run] total={total} kept={kept} skipped={skipped} deduped={deduped}")
-        print(f"[dry-run] known sites: {known_sites_placed} placements, "
-              f"{sum(len(v) for v in site_boxes.values())} site boxes")
+        print(f"[dry-run] additional sites: {additional_sites_placed} "
+              f"placements, {sum(len(v) for v in site_boxes.values())} site boxes")
         print(f"[dry-run] sub-regions={n_regions}  "
               f"big-regions={len(set(big_of.values()))}  "
               f"max-objects/region={max_per}")
@@ -1300,7 +1303,7 @@ def build_pack(csv_path, opts) -> int:
                   f"non-lattice objects")
         return 0
 
-    if kept == 0 and known_sites_placed == 0:
+    if kept == 0 and additional_sites_placed == 0:
         print("No antennas matched the filters; nothing to build.")
         return 0
 
@@ -1384,10 +1387,10 @@ def build_pack(csv_path, opts) -> int:
     if not opts.no_exclude and opts.exclude_radius_ft > 0:
         print(f"  exclude zones   : {n_boxes:,} (radius {opts.exclude_radius_ft:.0f} ft, "
               f"min height {opts.exclude_min_height:.0f} m)")
-    if known:
-        print(f"  known sites   : {known_sites_placed} placements, "
+    if additional:
+        print(f"  additional sites: {additional_sites_placed} placements, "
               f"{sum(len(v) for v in site_boxes.values())} site boxes "
-              f"({', '.join(s['name'] for s in known if s['name'])[:120]})")
+              f"({', '.join(s['name'] for s in additional if s['name'])[:120]})")
     if suppressed_hist:
         print(f"  suppressed types: {sum(suppressed_hist.values()):,} "
               f"({', '.join(sorted(suppressed_hist))})")
@@ -1454,8 +1457,8 @@ def _add_build_options(p, default_out,
     p.add_argument("--radio-only", action="store_true",
                    help="draw only the tall red/white lattice radio towers; "
                         "skip grey monopole and comm-tower-style objects "
-                        "(explicit object_path rows, e.g. known sites, "
-                        "still draw)")
+                        "(explicit object_path rows, e.g. additional "
+                        "sites, still draw)")
     p.add_argument("--exclude-radius-ft", type=float, default=300.0,
                    help="exclusion-zone half-size in feet around each drawn "
                         "tower (default 300); 0 disables the zones")
@@ -1465,12 +1468,13 @@ def _add_build_options(p, default_out,
     p.add_argument("--exclude-min-height", type=float, default=0.0,
                    help="only emit exclusion zones for towers at or above "
                         "this structure height in meters (default 0 = all)")
-    p.add_argument("--known-sites",
-                   default=str(HERE / "known_sites.csv"),
-                   help="curated known-sites supplement CSV (default: "
-                        "known_sites.csv; missing file = no known sites)")
-    p.add_argument("--no-known-sites", action="store_true",
-                   help="ignore the known-sites supplement entirely")
+    p.add_argument("--additional-sites",
+                   default=str(HERE / "additional_sites.csv"),
+                   help="curated additional-sites supplement CSV (default: "
+                        "additional_sites.csv; missing file = no additional "
+                        "sites)")
+    p.add_argument("--no-additional-sites", action="store_true",
+                   help="ignore the additional-sites supplement entirely")
     p.add_argument("--workers", type=int, default=6,
                    help="parallel DSFTool conversions (default 6)")
     p.add_argument("--dsftool", default="", help="path to DSFTool")
@@ -1532,10 +1536,10 @@ def main(argv=None) -> int:
 
     if args.command == "showroom":
         csv_path = write_showroom_csv(args.csv)
-        # The showroom never reads the known-sites supplement (the plinth
-        # covers the bounding box of all placed objects, so unknown-region
-        # towers would stretch the patch).
-        args.no_known_sites = True
+        # The showroom never reads the additional-sites supplement (the
+        # plinth covers the bounding box of all placed objects, so
+        # unknown-region towers would stretch the patch).
+        args.no_additional_sites = True
         return build_pack(str(csv_path), args)
 
     # build

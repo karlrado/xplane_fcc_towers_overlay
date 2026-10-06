@@ -3,7 +3,7 @@
 Hermetic by design: tests never touch the network and never read the real
 FCC dataset.  A tiny synthetic ``r_tower.zip`` (RA.dat + CO.dat, the same
 pipe-delimited ULS format the FCC publishes) covers every interesting code
-path: type/height routing, dedup, region math, filters, and known sites.
+path: type/height routing, dedup, region math, filters, and additional sites.
 """
 
 import os
@@ -126,8 +126,8 @@ def fcc_zip(tmp_path_factory) -> Path:
     return make_fcc_zip(tmp_path_factory.mktemp("fccdata") / "r_tower.zip")
 
 
-# Known-sites fixture (hermetic stand-in for known_sites.csv).
-KNOWN_SITES_CSV = """\
+# Additional-sites fixture (hermetic stand-in for additional_sites.csv).
+ADDITIONAL_SITES_CSV = """\
 name,lat,lon,object_path,height_m,exclusion_radius_ft
 TestSiteTower,40.110000,-104.960000,lib/constructions/antennas/comm_tower_25m_1.obj,55,400
 # a bad row: out-of-range lat, must be skipped silently
@@ -136,9 +136,9 @@ BadSite,120.0,-104.96,lib/constructions/antennas/comm_tower_25m_1.obj,55,0
 
 
 @pytest.fixture()
-def known_sites_csv(tmp_path) -> Path:
-    p = tmp_path / "known_sites.csv"
-    p.write_text(KNOWN_SITES_CSV, encoding="utf-8")
+def additional_sites_csv(tmp_path) -> Path:
+    p = tmp_path / "additional_sites.csv"
+    p.write_text(ADDITIONAL_SITES_CSV, encoding="utf-8")
     return p
 
 
@@ -167,11 +167,11 @@ def workdir(tmp_path):
 
 
 @pytest.fixture()
-def build_pack_run(fcc_zip, known_sites_csv):
+def build_pack_run(fcc_zip, additional_sites_csv):
     """Run a --text-only build in a fresh workdir; return (proc, workdir, paths).
 
-    Pass --no-known-sites or your own --known-sites to the args; the
-    default run uses the hermetic known-sites fixture.
+    Pass --no-additional-sites or your own --additional-sites to the args;
+    the default run uses the hermetic additional-sites fixture.
     """
     import tempfile
     d = Path(tempfile.mkdtemp(prefix="ft_test_"))
@@ -180,7 +180,7 @@ def build_pack_run(fcc_zip, known_sites_csv):
             "--zip-path", str(fcc_zip),
             "--csv-out", "active_antennas.csv",
             "--out", str(out),
-            "--known-sites", str(known_sites_csv),
+            "--additional-sites", str(additional_sites_csv),
             "--text-only", "--keep-text"]
     proc = run_script(args, cwd=d)
     return proc, d, out

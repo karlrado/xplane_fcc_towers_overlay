@@ -45,7 +45,7 @@ def test_round_trip(fcc_zip, tmp_path):
                     "--zip-path", str(fcc_zip),
                     "--csv-out", "active_antennas.csv",
                     "--out", str(out),
-                    "--no-known-sites"], cwd=tmp_path)
+                    "--no-additional-sites"], cwd=tmp_path)
     assert p.returncode == 0, p.stdout + p.stderr
     assert "converted OK/fail: 3/0" in p.stdout
 
