@@ -151,6 +151,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import csv
+import hashlib
 import math
 import os
 import shutil
@@ -503,8 +504,10 @@ def fetch_csv(args) -> Path:
 # geometry):
 #  * comm-tower family, airport scenery library (binary OBJ, named heights):
 #      EXPORT lib/constructions/antennas/comm_tower_10m_1.obj  Common_Elements/antennas/ctower_10m_01.obj
-#    (variants _1/_2/_3 are different styles; same for 12m/15m/25m).  The
-#    smallest stock radio tower is 50 m, so comm towers cover <= 25 m.
+#    Variants are different styles per height (verified against the
+#    installed library.txts): 10m _1/_2/_3, 12m _1/_2, 15m _1/_2,
+#    25m _1/_2/_3 -- see OBJECT_VARIANTS.  The smallest stock radio tower
+#    is 50 m, so comm towers cover <= 25 m.
 #  * small antenna family, airport scenery library:
 #      lib/constructions/antennas/antenna_5m_01.obj .. antenna_8m_06.obj
 #  * radio-tower set, "900 us objects" pack (meter-scaled):
@@ -606,6 +609,53 @@ def _pick(table, height_m):
         if height_m <= cap:
             return table[cap]
     return table[max(table)]
+
+
+# Visual variants of the stock antenna/comm-tower objects, keyed by the
+# first variant path the tables above pick.  Only sets that actually exist in
+# the installed X-Plane library are listed (verified against the library.txt
+# EXPORT lines): 12 m and 15 m have two variants, the others three, plus the
+# small-antenna families (9 and 6).  The radio-tower set (feat_RadioTower)
+# exports the same mesh across its 5x5/10x10 series and the generated
+# monopoles have none, so neither appears here.
+OBJECT_VARIANTS = {
+    "lib/constructions/antennas/comm_tower_10m_1.obj":
+        [f"lib/constructions/antennas/comm_tower_10m_{i}.obj"
+         for i in (1, 2, 3)],
+    "lib/constructions/antennas/comm_tower_12m_1.obj":
+        [f"lib/constructions/antennas/comm_tower_12m_{i}.obj"
+         for i in (1, 2)],
+    "lib/constructions/antennas/comm_tower_15m_1.obj":
+        [f"lib/constructions/antennas/comm_tower_15m_{i}.obj"
+         for i in (1, 2)],
+    "lib/constructions/antennas/comm_tower_25m_1.obj":
+        [f"lib/constructions/antennas/comm_tower_25m_{i}.obj"
+         for i in (1, 2, 3)],
+    "lib/constructions/antennas/antenna_5m_01.obj":
+        [f"lib/constructions/antennas/antenna_5m_{i:02d}.obj"
+         for i in range(1, 10)],
+    "lib/constructions/antennas/antenna_8m_01.obj":
+        [f"lib/constructions/antennas/antenna_8m_{i:02d}.obj"
+         for i in range(1, 7)],
+}
+
+
+def pick_variant(path, key):
+    """Deterministically rotate a stock object through its visual variants.
+
+    ``key`` identifies the tower (its FCC registration number, or rounded
+    coordinates when absent).  The SHA-256 digest of the key selects the
+    variant, so the same tower always gets the same style while different
+    towers spread across the set.  This is stable across weekly FCC data
+    refreshes and across Python processes (the built-in ``hash()`` is
+    salted per process and would not be).  Paths with no verified variant
+    set (radio towers, generated monopoles) come back unchanged.
+    """
+    variants = OBJECT_VARIANTS.get(path)
+    if not variants:
+        return path
+    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
+    return variants[int(digest, 16) % len(variants)]
 
 
 def pick_object(height_m, structure_type, family=None):
@@ -1175,6 +1225,11 @@ def build_pack(csv_path, opts) -> int:
                     radio_skipped += 1
                     skipped += 1
                     continue
+                # Rotate through this object's visual variants (the stock
+                # library ships several styles per height).  Deterministic
+                # per tower, stable across weekly FCC data refreshes.
+                path = pick_variant(
+                    path, reg if reg else f"{lat:.7f},{lon:.7f}")
             sub, big, props = region_for(lat, lon)
             regions.setdefault(sub, {"props": props, "placements": []})
             regions[sub]["placements"].append((lon, lat, path, h_eff))

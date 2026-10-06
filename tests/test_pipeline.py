@@ -148,7 +148,8 @@ class TestBuildDefaults:
         assert len(objects(t)) == 3
         assert len(OBJDEF.findall(t)) == 3
         assert "OBJECT_DEF /lib/global8/us/feat_RadioTower_10_10_650r200.obj" in t
-        assert "OBJECT_DEF lib/constructions/antennas/comm_tower_12m_1.obj" in t
+        # reg 1254226 (the 12 m POLE) hashes to variant _2 of its 2-variant set
+        assert "OBJECT_DEF lib/constructions/antennas/comm_tower_12m_2.obj" in t
         assert "OBJECT_DEF /lib/global8/us/feat_RadioTower_10_10_650r100.obj" in t
         assert len(EXCL.findall(t)) == 6            # 3 boxes x obj+fac
 

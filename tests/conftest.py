@@ -66,7 +66,7 @@ RA_RECORDS = [
     ("A9000006", "1254225", "C", "C", "CO", "400.0", "MAST",
      "clamps to monopole 150"),
     ("A9000007", "1254226", "C", "C", "TX", "12.0", "POLE",
-     "small pole -> comm_tower_12m_1"),
+     "small pole -> comm_tower_12m (variant _2 by hash)"),
     ("A9000008", "1254227", "C", "C", "TX", "100.0", "BANT",
      "suppressed type (building antenna)"),
     ("A9000009", "1999901", "C", "C", "CO", "99.0", "TOWER",

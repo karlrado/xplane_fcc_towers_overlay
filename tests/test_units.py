@@ -135,6 +135,34 @@ class TestPickObject:
         assert ft._pick(ft.BIG_TOWERS, 9999) == f"{R}r300.obj"
 
 
+class TestPickVariant:
+    def test_no_variant_sets_pass_through(self):
+        assert ft.pick_variant(f"{R}r100.obj", "123") == f"{R}r100.obj"
+        assert ft.pick_variant(f"{M}monopole_50.obj", "123") == f"{M}monopole_50.obj"
+
+    def test_deterministic(self):
+        p = f"{A}comm_tower_12m_1.obj"
+        assert ft.pick_variant(p, "abc") == ft.pick_variant(p, "abc")
+        assert ft.pick_variant(p, "abc") == ft.pick_variant(p, "abc")
+
+    def test_stays_within_variant_set(self):
+        for name, variants in ft.OBJECT_VARIANTS.items():
+            for i in range(50):
+                v = ft.pick_variant(name, f"key{i}")
+                assert v in variants, (name, v)
+
+    def test_all_variants_reachable(self):
+        # 200 sample keys cover every bucket of every set (checked before
+        # hardcoding this assertion)
+        for name, variants in ft.OBJECT_VARIANTS.items():
+            seen = {ft.pick_variant(name, f"sample{i}") for i in range(200)}
+            assert seen == set(variants), (name, seen)
+
+    def test_different_towers_can_differ(self):
+        p = f"{A}comm_tower_12m_1.obj"
+        assert len({ft.pick_variant(p, f"k{i}") for i in range(20)}) == 2
+
+
 # ---------------------------------------------------------------------------
 # Region math
 # ---------------------------------------------------------------------------
