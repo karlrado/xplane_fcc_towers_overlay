@@ -23,6 +23,22 @@ sh build.sh          # produces ./DSFTool
 `build.sh` mirrors the official `cmake/DSFTool.cmake` recipe from the
 xptools repository.
 
+`fcc_towers.py` finds a locally built binary automatically (after
+checking an explicit `--dsftool` path and the PATH), so no extra setup
+is needed once the build succeeds.
+
+## Platforms
+
+| Platform | Status |
+|----------|--------|
+| Linux (gcc or clang + zlib dev package) | **Proven** -- the CI build runs it on ubuntu-24.04 |
+| macOS (Apple clang + `brew install zlib`) | Expected to work, untested |
+| Windows, native (MSVC) | Not supported -- `build.sh` uses GCC/Clang flag syntax and `-lz` linking |
+| Windows via WSL | Works (it is Linux); note the output is a Linux binary, so run the whole build inside WSL |
+
+On Windows the official prebuilt `DSFTool.exe` (links further below)
+is the simplest option.
+
 ## Usage
 
 ```sh
