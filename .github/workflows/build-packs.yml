@@ -108,6 +108,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout (gh release create needs the tag locally)
+        uses: actions/checkout@v4
+
       - name: Download pack artifact
         uses: actions/download-artifact@v4
         with:
