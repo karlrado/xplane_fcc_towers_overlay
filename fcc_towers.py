@@ -1556,7 +1556,7 @@ def main(argv=None) -> int:
                         help="build the FCC_TowerShowroom object gallery "
                              "(no FCC download)")
     _add_build_options(ps, HERE / "output" / "FCC_TowerShowroom",
-                       default_csv="synthetic_antennas.csv")
+                       default_csv="showroom_antennas.csv")
 
     pc = sub.add_parser("csv",
                         help="download fresh FCC data and write the CSV "
