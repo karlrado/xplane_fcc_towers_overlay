@@ -1501,15 +1501,45 @@ def _add_build_options(p, default_out,
                         "converting")
 
 
+def _terse_epilog(sub) -> str:
+    """For the terse top-level -h: the option flags of each command, with
+    no description text (see <command> -h for that).  Generated from the
+    real subparsers so the list cannot drift from the actual options."""
+    lines = ["options (see <command> -h for descriptions and defaults):"]
+    width = 74
+    for name, parser in sub.choices.items():
+        flags = [s for a in parser._actions
+                 for s in a.option_strings
+                 if s not in ("-h", "--help")]
+        line = f"  {name}:"
+        for flag in flags:
+            if len(line) + 1 + len(flag) > width:
+                lines.append(line)
+                line = " " * 11 + flag
+            else:
+                line += " " + flag
+        lines.append(line)
+    lines.append("")
+    lines.append("  --help-detailed   full documentation (data sources, "
+                 "filters, build steps)")
+    return "\n".join(lines)
+
+
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    # Full documentation (the module docstring), on request.
+    if "--help-detailed" in argv:
+        print(__doc__.strip("\n"))
+        return 0
     # Default command: build.
     if not argv or argv[0] not in ("build", "showroom", "csv",
                                    "-h", "--help"):
         argv = ["build"] + argv
 
     ap = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+        description="Build X-Plane 12 scenery packs from FCC antenna "
+                    "Structure Registration (ASR) data",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="command")
 
     pb = sub.add_parser("build",
@@ -1535,6 +1565,7 @@ def main(argv=None) -> int:
     pc.add_argument("--csv-out", default="active_antennas.csv",
                     help="where to write the CSV (default: active_antennas.csv)")
 
+    ap.epilog = _terse_epilog(sub)
     args = ap.parse_args(argv)
 
     # The plinth is showroom presentation (SHOWROOM_PLINTH_* constants at the

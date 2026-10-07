@@ -100,6 +100,20 @@ with blank lat/lon (3 in the current data set) so nothing is silently dropped.
   `--keep-text` is given; `--text-only` stops before conversion entirely;
   `--dry-run` reports the region/object plan without writing anything.
 
+The result is a normal scenery pack:
+
+```
+<out>/
+    Earth nav data/
+        +40-110/+40-101.dsf
+        +29-90/+29-96.dsf
+        ...
+    objects/            generated monopole meshes + library.txt
+```
+
+Copy the `<out>` folder into `C:\X-Plane 12\Custom Scenery` and it loads
+as an overlay.
+
 ## Which object each tower gets
 
 The FCC `structure_type` selects a style *family*, and the structure height

@@ -405,3 +405,36 @@ class TestFindDsfTool:
         with pytest.raises(SystemExit) as exc:
             ft.find_dsftool("")
         assert "tools/dsftool/build.sh" in str(exc.value)
+
+
+# ---------------------------------------------------------------------------
+# Help output
+# ---------------------------------------------------------------------------
+
+class TestHelp:
+    def test_terse_help_lists_commands_and_flags(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            ft.main(["-h"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        for token in ("build", "showroom", "csv",
+                      "--radio-only", "--exclude-radius-ft",
+                      "--help-detailed"):
+            assert token in out
+        # The long module docstring must NOT be part of the terse help.
+        assert "pipe-delimited" not in out
+
+    def test_help_detailed_prints_full_docstring(self, capsys):
+        assert ft.main(["--help-detailed"]) == 0
+        out = capsys.readouterr().out
+        assert "pipe-delimited" in out
+        assert "RA.dat" in out
+
+    def test_subcommand_help_still_full(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            ft.main(["build", "-h"])
+        assert exc.value.code == 0
+        out = capsys.readouterr().out
+        assert "--exclude-radius-ft" in out
+        # The per-option description text is still present here.
+        assert "exclusion-zone" in out
