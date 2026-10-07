@@ -142,6 +142,34 @@ class TestBuildDefaults:
         for n in (50, 75, 100, 150):
             assert f"EXPORT fcc_towers/monopole_{n}.obj\tobjects/monopole_{n}.obj" in lib
 
+    def test_build_info_txt(self, build_pack_run):
+        _, _, out = build_pack_run
+        info = (out / "BUILD_INFO.txt").read_text(encoding="utf-8")
+        # the fixture builds into a folder named 'pack'
+        assert info.startswith("pack - pack build information")
+        assert "Pack          : pack" in info
+        assert "Release       : local build" in info
+        assert "Version       : " in info
+        assert "Towers placed : 10" in info
+        assert "Exclusion radius  : 300 ft" in info
+        assert "Radio towers only : no" in info
+        # data date is the (fresh) CSV date, i.e. a YYYY-MM-DD
+        assert re.search(r"Data date     : \d{4}-\d{2}-\d{2} \(date of the input CSV\)", info)
+
+    def test_release_tag_recorded(self, fcc_zip, additional_sites_csv, tmp_path):
+        out = tmp_path / "pack"
+        args = ["build",
+                "--zip-path", str(fcc_zip),
+                "--csv-out", "active_antennas.csv",
+                "--out", str(out),
+                "--additional-sites", str(additional_sites_csv),
+                "--text-only",
+                "--release-tag", "weekly-2026-01-01"]
+        p = run_script(args, cwd=tmp_path)
+        assert p.returncode == 0, p.stdout + p.stderr
+        info = (out / "BUILD_INFO.txt").read_text(encoding="utf-8")
+        assert "Release       : weekly-2026-01-01" in info
+
     def test_region_29_096(self, build_pack_run, stage_text):
         _, _, _ = build_pack_run
         t = stage_text("+29-096")

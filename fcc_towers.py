@@ -161,6 +161,7 @@ import time
 import urllib.request
 import zipfile
 from collections import OrderedDict
+from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -1131,6 +1132,71 @@ def write_showroom_csv(path):
 # ===========================================================================
 # Pack build orchestration
 # ===========================================================================
+REPO_URL = "https://github.com/karlrado/xplane_fcc_towers_overlay"
+
+
+def write_build_info(out_root: str, opts, csv_path: str,
+                     kept: int, additional_placed: int) -> str:
+    """Write BUILD_INFO.txt into the pack root folder.
+
+    Records which release this pack is, when it was built, which week's FCC
+    data it contains, and the key build options -- so anyone (the user, or
+    you on somebody else's machine) can answer "is this pack current?" by
+    opening one file, without checking GitHub release dates.  Returns the
+    path written.
+    """
+    pack = os.path.basename(os.path.normpath(out_root))
+    version = "unknown"
+    version_file = os.path.join(HERE, "VERSION")
+    if os.path.isfile(version_file):
+        with open(version_file, encoding="utf-8") as f:
+            version = f.read().strip() or "unknown"
+
+    data_date = "unknown"
+    if csv_path and os.path.isfile(csv_path):
+        data_date = datetime.fromtimestamp(
+            os.path.getmtime(csv_path), timezone.utc).strftime("%Y-%m-%d")
+
+    source_label = {
+        "registration": "registration database (r_tower.zip)",
+        "application": "application database (a_tower.zip)",
+    }.get(getattr(opts, "source", None), "FCC antenna registration data")
+
+    max_h = "none" if math.isinf(opts.max_height) else f"{opts.max_height:g} m"
+    exclude = ("disabled" if opts.no_exclude
+               else f"{opts.exclude_radius_ft:g} ft")
+
+    title = f"{pack} - pack build information"
+    lines = [
+        title,
+        "=" * len(title),
+        f"Pack          : {pack}",
+        f"Version       : {version}",
+        f"Release       : {opts.release_tag}",
+        f"Built         : {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC",
+        "",
+        "FCC data",
+        "--------",
+        f"Source        : {source_label}",
+        f"Data date     : {data_date} (date of the input CSV)",
+        f"Towers placed : {kept:,}",
+        f"Additional sites: {additional_placed}",
+        "",
+        "Build options",
+        "-------------",
+        f"Min height        : {opts.min_height:g} m",
+        f"Max height        : {max_h}",
+        f"Exclusion radius  : {exclude}",
+        f"Radio towers only : {'yes' if opts.radio_only else 'no'}",
+        "",
+        f"Repo: {REPO_URL}",
+    ]
+    path = os.path.join(out_root, "BUILD_INFO.txt")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    return path
+
+
 def build_pack(csv_path, opts) -> int:
     """Read a CSV of antenna rows and build the scenery pack.
 
@@ -1138,7 +1204,7 @@ def build_pack(csv_path, opts) -> int:
     (out, min_height, max_height, state, max_objects, object, radio_only,
     plinth_z, plinth_margin, plinth_texture, text_only, keep_text, dry_run,
     exclude_radius_ft, no_exclude, exclude_min_height, workers, dsftool,
-    additional_sites, no_additional_sites).
+    additional_sites, no_additional_sites, release_tag).
     """
     forced_family = opts.object if opts.object in FAMILIES else None
     states = {s.strip().upper() for s in opts.state.split(",") if s.strip()}
@@ -1393,6 +1459,10 @@ def build_pack(csv_path, opts) -> int:
     if not opts.keep_text:
         shutil.rmtree(staging, ignore_errors=True)
 
+    # ---- pack self-description ------------------------------------------
+    info_path = write_build_info(opts.out, opts, csv_path,
+                                 kept, additional_sites_placed)
+
     # ---- summary --------------------------------------------------------
     total_dsf = sum(os.path.getsize(dsf) for _, dsf in jobs if os.path.isfile(dsf)) if not opts.text_only else 0
     print(f"\nBuilt {n_regions} sub-region DSF files "
@@ -1419,6 +1489,7 @@ def build_pack(csv_path, opts) -> int:
             for name, err in failures:
                 print(f"    {name}: {err}")
     print(f"  output          : {opts.out}")
+    print(f"  build info      : {info_path}")
     if not opts.text_only:
         print(f"  dsf total size  : {total_dsf/1024/1024:.1f} MB")
     print(f"\nNext: copy the '{os.path.basename(opts.out)}' folder into")
@@ -1492,6 +1563,9 @@ def _add_build_options(p, default_out,
     p.add_argument("--workers", type=int, default=6,
                    help="parallel DSFTool conversions (default 6)")
     p.add_argument("--dsftool", default="", help="path to DSFTool")
+    p.add_argument("--release-tag", default="local build",
+                   help="release identifier recorded in BUILD_INFO.txt "
+                        "(default 'local build'; CI passes the release tag)")
     p.add_argument("--text-only", action="store_true",
                    help="write .txt only; skip DSFTool conversion")
     p.add_argument("--keep-text", action="store_true",

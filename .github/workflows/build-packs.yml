@@ -89,7 +89,20 @@ jobs:
         run: ./tools/dsftool/DSFTool --version
 
       - name: Build FCC_Towers pack (fresh FCC data)
-        run: python fcc_towers.py build --dsftool tools/dsftool/DSFTool
+        run: |
+          # Record the release identity in the pack's BUILD_INFO.txt.
+          # Tag-triggered runs use their tag; schedule/dispatch runs will
+          # be released as weekly-<UTC date> (same computation as the
+          # release job); plain main pushes are not released.
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            tag="$GITHUB_REF_NAME"
+          elif [[ "$GITHUB_EVENT_NAME" == schedule || "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            tag="weekly-$(date -u +%F)"
+          else
+            tag="CI build (not released)"
+          fi
+          python fcc_towers.py build --dsftool tools/dsftool/DSFTool \
+            --release-tag "$tag"
 
       # The showroom pack is intentionally NOT built here: it is a developer
       # convenience, not something most users want.  DIY: clone the repo and

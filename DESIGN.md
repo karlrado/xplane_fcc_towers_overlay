@@ -109,10 +109,22 @@ The result is a normal scenery pack:
         +29-90/+29-96.dsf
         ...
     objects/            generated monopole meshes + library.txt
+    BUILD_INFO.txt      pack self-description (see below)
 ```
 
 Copy the `<out>` folder into `C:\X-Plane 12\Custom Scenery` and it loads
 as an overlay.
+
+### BUILD_INFO.txt
+
+Every build writes a small plain-text `BUILD_INFO.txt` into the pack root
+so the installed pack is self-describing — it answers "is this pack
+current?" and "which week's FCC data is it built from?" without checking
+GitHub release dates.  It records the pack name, the `VERSION` file
+contents, the release identity (`--release-tag`, default `local build`;
+CI passes the release tag), the build time (UTC), the FCC data source and
+the input CSV's date, the tower/additional-site counts, and the key build
+options (height range, exclusion radius, radio-only).
 
 ## Which object each tower gets
 
