@@ -90,6 +90,48 @@ ft AGL) to judge the short rows. Remove the folder (and its
 `scenery_packs.ini` line) when done. Layout and rationale are in
 [DESIGN.md](DESIGN.md).
 
+## Frequently Asked Questions
+
+### How does this work?
+The Python code fetches the tower information from the FCC and generates DSF files
+containing object references to (mostly) tower objects in the default X-Plane library.
+The DSF file also contains exclusion zones around the base of each tower to prevent
+other scenery overlays (e.g., SimHeaven) or X-Plane autogen from drawing towers in the same place.
+
+The Python script is executed once to create the pack and the pack is then copied into
+the X-Plane Custom Scenery directory.
+
+### What if I don't see any towers?
+The entry for this pack in `scenery_packs.ini` is probably in the wrong place.
+It needs to be placed before the entries for other packs like SimHeaven.
+SimHeaven takes over object generation completely by creating exclusion zones
+over the entire tile, preventing object injection by any pack placed after it in the file.
+
+### Will this tank my framerate?
+Probably not.
+There are usually not very many towers in view at one time.
+If you suspect that the towers are impacting your framerate severely,
+you can rebuild the scenery pack with the `--radio-only` option to
+get only the taller lattice radio towers and omit the shorter and
+numerous communications (cell) towers.
+
+### Is this "vibe-coded AI slop"?
+Not at all!
+Although AI-assistance is heavily used in the project.
+The human with 40+ years of software development experience teamed up with AI
+to create this, working primarily as peers with the human directing the overall plan.
+The AI performed most of the coding and performed extensive validation and testing
+throughout the project.
+Since the end result is a benign X-Plane 12 scenery pack, there is no risk in using
+this pack as the worst that can happen is X-Plane stopping due to some error in the pack.
+The Python script is also easily checked for any suspicious code.
+
+### How does this compare to similar products by Taburet?
+The author did not purchase these products and didn't use any assets from them.
+It is likely that these products were created in a similar manner and provide
+some additional "value-add" by including some higher-quality antenna models that are
+better than the X-Plane stock models or any models provided here.
+
 ## Repository layout
 
 | Path | What it is |
