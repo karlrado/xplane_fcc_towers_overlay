@@ -17,12 +17,31 @@ sectionals, so they can be seen, reported, and avoided.
 
 ## See it in action
 
-The 610 m guyed mast at Hitchcock, TX, from the same vantage point
-(in the last panel, from the road beside it):
+Two test sites, each from the same vantage point. Row 1: X-Plane default
+scenery, then SimHeaven alone. Row 2: SimHeaven + FCC_Towers, then reality.
 
-| SimHeaven alone | SimHeaven + FCC_Towers | Reality (Google Maps) |
-|:---:|:---:|:---:|
-| ![](docs/images/hitchcock_simheaven.jpg) | ![](docs/images/hitchcock_sh_fcc.jpg) | ![](docs/images/hitchcock_real.jpg) |
+**Northglenn, CO** — a 4-tower array. X-Plane's default scenery draws no
+towers here at all, and SimHeaven alone adds only a few thin grey masts.
+With FCC_Towers, the full 4 red/white lattice towers appear:
+
+| X-Plane default | SimHeaven alone |
+|:---:|:---:|
+| ![](docs/images/northglenn_default.jpg) | ![](docs/images/northglenn_simheaven.jpg) |
+
+| SimHeaven + FCC_Towers | Reality |
+|:---:|:---:|
+| ![](docs/images/northglenn_sh_fcc.jpg) | ![](docs/images/northglenn_real.jpg) |
+
+**Hitchcock, TX** — the 610 m guyed mast (reality panel from the road
+beside it, via Google Maps):
+
+| X-Plane default | SimHeaven alone |
+|:---:|:---:|
+| ![](docs/images/hitchcock_default.jpg) | ![](docs/images/hitchcock_simheaven.jpg) |
+
+| SimHeaven + FCC_Towers | Reality |
+|:---:|:---:|
+| ![](docs/images/hitchcock_sh_fcc.jpg) | ![](docs/images/hitchcock_real.jpg) |
 
 ## Install (X-Plane 12)
 
