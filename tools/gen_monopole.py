@@ -24,7 +24,7 @@ Geometry
   .dds of the same name, but stock objects prove PNG is accepted).
 
 800-OBJ format (reverse-engineered from stock 900-us-objects and
-SimHeaven files; see devnotes/mono_test/ history):
+SimHeaven files):
   A
   800
   OBJ
