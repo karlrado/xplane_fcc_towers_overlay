@@ -126,6 +126,14 @@ CI passes the release tag), the build time (UTC), the FCC data source and
 the input CSV's date, the tower/additional-site counts, and the key build
 options (height range, exclusion radius, radio-only).
 
+### Releases
+
+All GitHub releases are normal (stable) — there is no pre-release
+channel. Weekly data refreshes (tags `weekly-<UTC date>`) and version
+tags (e.g. `v1.0.0`) are published identically, and the newest one
+becomes GitHub's "Latest". If a pre-release flag is ever needed, it can
+be set afterwards via the web UI (`gh release edit <tag> --prerelease`).
+
 ## Which object each tower gets
 
 The FCC `structure_type` selects a style *family*, and the structure height

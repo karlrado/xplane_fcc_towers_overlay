@@ -164,12 +164,10 @@ jobs:
           # Tag for this release: the one created above (schedule/dispatch)
           # or the tag that triggered the run.
           tag="${RELEASE_TAG:-$GITHUB_REF_NAME}"
-          # Version tags are milestone pre-releases; weekly data refreshes
-          # are normal releases and become GitHub's "Latest".
-          prerelease=""
-          if [[ "$tag" == v* ]]; then prerelease=--prerelease; fi
+          # All releases are normal (stable); there is no pre-release
+          # channel. If one is ever needed, set the flag afterwards via
+          # the web UI: gh release edit <tag> --prerelease
           gh release create "$tag" \
             --title "$tag" \
             --generate-notes \
-            $prerelease \
             dist/*.zip
