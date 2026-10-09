@@ -17,20 +17,22 @@ sectionals, so they can be seen, reported, and avoided.
 
 ## See it in action
 
-Two test sites, each from the same vantage point. Row 1: X-Plane default
-scenery, then SimHeaven alone. Row 2: SimHeaven + FCC_Towers, then reality.
+Two test sites, each from the same vantage point. Row 1: X-Plane
+default scenery, then SimHeaven alone. Row 2: SimHeaven + FCC_Towers,
+then reality.
 
-**Northglenn, CO** — a 4-tower array. X-Plane's default scenery draws no
-towers here at all, and SimHeaven alone adds only a few thin grey masts.
-With FCC_Towers, the full 4 red/white lattice towers appear:
+**Morriston, FL** — a ~105 m tower in open farmland. Neither X-Plane's
+default scenery nor SimHeaven alone draws anything here; with FCC_Towers,
+the tall red/white tower appears (reality panel from the roadside, via
+Google Maps):
 
 | X-Plane default | SimHeaven alone |
 |:---:|:---:|
-| ![](docs/images/northglenn_default.jpg) | ![](docs/images/northglenn_simheaven.jpg) |
+| ![](docs/images/morriston_default.jpg) | ![](docs/images/morriston_simheaven.jpg) |
 
 | SimHeaven + FCC_Towers | Reality |
 |:---:|:---:|
-| ![](docs/images/northglenn_sh_fcc.jpg) | ![](docs/images/northglenn_real.jpg) |
+| ![](docs/images/morriston_sh_fcc.jpg) | ![](docs/images/morriston_real.jpg) |
 
 **Hitchcock, TX** — the 610 m guyed mast (reality panel from the road
 beside it, via Google Maps):
