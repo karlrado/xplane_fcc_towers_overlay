@@ -2,10 +2,12 @@ name: build-pack
 
 on:
   workflow_dispatch:
-  # Weekly rebuild: the FCC antenna database refreshes about once a week.
-  # Monday 16:00 UTC (~10:00 Denver) so the week's refresh is likely in.
+  # Weekly rebuild: the FCC antenna database refreshes about once a week
+  # at approximately 5:00 AM ET on Sundays.
+  # This workflow runs on Monday at 10:00 AM UTC to give the refresh
+  # time to complete and at a time when the runners may be less busy.
   schedule:
-    - cron: '0 16 * * 1'
+    - cron: '0 10 * * 1'
   push:
     branches: [main]
     tags: ["v*", "weekly-*"]
