@@ -916,8 +916,18 @@ def write_pack_assets(out_root, assets_dir):
     os.makedirs(obj_dst, exist_ok=True)
     for name in sorted(os.listdir(assets_dir)):
         src = os.path.join(assets_dir, name)
-        if os.path.isfile(src):
-            shutil.copy2(src, os.path.join(obj_dst, name))
+        if not os.path.isfile(src):
+            continue
+        dst = os.path.join(obj_dst, name)
+        if name.lower().endswith(".obj"):
+            # .obj is text: force LF so a local (Windows/CRLF) build is
+            # byte-identical to the CI (Linux/LF) build, regardless of this
+            # machine's core.autocrlf or how the working tree was produced.
+            Path(dst).write_bytes(
+                Path(src).read_bytes().replace(b"\r\n", b"\n")
+                                   .replace(b"\r", b"\n"))
+        else:
+            shutil.copy2(src, dst)   # binary (e.g. .png): copy verbatim
     with open(os.path.join(out_root, "library.txt"), "w") as f:
         f.write("A\n800\nLIBRARY\n")
         f.writelines(
