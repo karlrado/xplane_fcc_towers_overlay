@@ -161,7 +161,7 @@ import time
 import urllib.request
 import zipfile
 from collections import OrderedDict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -918,8 +918,10 @@ def write_pack_assets(out_root, assets_dir):
             shutil.copy2(src, os.path.join(obj_dst, name))
     with open(os.path.join(out_root, "library.txt"), "w") as f:
         f.write("A\n800\nLIBRARY\n")
-        for _cap, res in MONOPOLES.items():
-            f.write(f"EXPORT {res}\tobjects/{os.path.basename(res)}\n")
+        f.writelines(
+            f"EXPORT {res}\tobjects/{os.path.basename(res)}\n"
+            for res in MONOPOLES.values()
+        )
 
 
 # ===========================================================================
@@ -1155,7 +1157,7 @@ def write_build_info(out_root: str, opts, csv_path: str,
     data_date = "unknown"
     if csv_path and os.path.isfile(csv_path):
         data_date = datetime.fromtimestamp(
-            os.path.getmtime(csv_path), timezone.utc).strftime("%Y-%m-%d")
+            os.path.getmtime(csv_path), UTC).strftime("%Y-%m-%d")
 
     source_label = {
         "registration": "registration database (r_tower.zip)",
@@ -1173,7 +1175,7 @@ def write_build_info(out_root: str, opts, csv_path: str,
         f"Pack          : {pack}",
         f"Version       : {version}",
         f"Release       : {opts.release_tag}",
-        f"Built         : {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC",
+        f"Built         : {datetime.now(UTC):%Y-%m-%d %H:%M} UTC",
         "",
         "FCC data",
         "--------",
