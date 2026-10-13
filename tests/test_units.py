@@ -10,7 +10,6 @@ import pytest
 
 import fcc_towers as ft
 
-
 # ---------------------------------------------------------------------------
 # Parsing
 # ---------------------------------------------------------------------------
@@ -379,7 +378,7 @@ class TestFindDsfTool:
 
     def test_explicit_missing_raises(self):
         with pytest.raises(SystemExit):
-            ft.find_dsftool(str("/no/such/dsftool"))
+            ft.find_dsftool("/no/such/dsftool")
 
     def test_path_wins_over_vendored(self, tmp_path, monkeypatch):
         vend = _fake_vendored(tmp_path)

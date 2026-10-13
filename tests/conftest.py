@@ -23,12 +23,12 @@ SCRIPT = ROOT / "fcc_towers.py"
 # Synthetic FCC ULS data
 # ---------------------------------------------------------------------------
 # RA.dat: 49 pipe-delimited fields (index 0 = "RA" tag).
-_RA_IDX = dict(
-    tag=0, kind=1, file=2, reg=3, usi=4, purpose=5, status=8,
-    date_action=14, archive=15, city=24, state=25,
-    height_m=28, ground_m=29, ag_m=30, amsl_m=31,
-    stype=32, faa=34,
-)
+_RA_IDX = {
+    "tag": 0, "kind": 1, "file": 2, "reg": 3, "usi": 4, "purpose": 5, "status": 8,
+    "date_action": 14, "archive": 15, "city": 24, "state": 25,
+    "height_m": 28, "ground_m": 29, "ag_m": 30, "amsl_m": 31,
+    "stype": 32, "faa": 34,
+}
 
 
 def _ra(**kw):
@@ -116,7 +116,7 @@ def make_fcc_zip(path: Path) -> Path:
         co = "\n".join(_co(*rec) for rec in CO_RECORDS) + "\n"
         zf.writestr("RA.dat", ra)
         zf.writestr("CO.dat", co)
-        zf.writestr("counts", "RA: %d\nCO: %d\n" % (len(RA_RECORDS), len(CO_RECORDS)))
+        zf.writestr("counts", f"RA: {len(RA_RECORDS)}\nCO: {len(CO_RECORDS)}\n")
     return path
 
 
@@ -155,6 +155,7 @@ def run_script(args, cwd, extra_env=None):
         [sys.executable, str(SCRIPT)] + list(args),
         cwd=str(cwd), env=env,
         capture_output=True, text=True, timeout=300,
+        check=False,
     )
 
 

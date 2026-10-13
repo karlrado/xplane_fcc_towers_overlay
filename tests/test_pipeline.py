@@ -7,17 +7,15 @@ DSFTool round-trip lives in test_dsf.py.
 """
 
 import csv
-import math
 import pathlib
 import re
 
 import pytest
-
 from conftest import run_script
 
-OBJ = re.compile(r"^OBJECT \d+ ", re.M)
-OBJDEF = re.compile(r"^OBJECT_DEF ", re.M)
-EXCL = re.compile(r"^PROPERTY sim/exclude_(obj|fac) ", re.M)
+OBJ = re.compile(r"^OBJECT \d+ ", re.MULTILINE)
+OBJDEF = re.compile(r"^OBJECT_DEF ", re.MULTILINE)
+EXCL = re.compile(r"^PROPERTY sim/exclude_(obj|fac) ", re.MULTILINE)
 
 
 def objects(text):
@@ -231,7 +229,7 @@ class TestBuildOptions:
         lines = [ln for ln in t.splitlines()
                  if ln.startswith("PROPERTY sim/exclude_obj ")]
         assert len(lines) == 1
-        w, s, e, n = (float(x) for x in lines[0].split(" ", 2)[2].split("/"))
+        _w, s, _e, n = (float(x) for x in lines[0].split(" ", 2)[2].split("/"))
         dlat = 100.0 * 0.3048 / 111_000.0
         # 1e-6: the text format rounds coordinates to 7 decimal places
         assert abs((n - s) - 2 * dlat) < 1e-6
