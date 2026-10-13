@@ -170,3 +170,30 @@ jobs:
             --title "$tag" \
             --generate-notes \
             dist/*.zip
+
+      # Keep the public release list bounded. Retain ALL version milestones
+      # (v*) and the newest N weekly-* releases (N via the KEEP_WEEKLY repo
+      # variable, default 4 ~= a month of data snapshots). Delete older weekly
+      # releases and their tags. Pruning is best-effort: a failure here is
+      # logged but does not fail the (already-created) release.
+      - name: Prune old weekly releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          KEEP=${{ vars.KEEP_WEEKLY || '4' }}
+          old="$(
+            gh release list --limit 500 --json name,createdAt \
+              | jq -r '
+                  [.[] | select(.name | startswith("weekly-"))] as $w
+                  | ($w | length) as $n
+                  | (if $n > '"$KEEP"' then $w | sort_by(.createdAt) | .[0:($n-"'$KEEP'")] else [] end)
+                  | .[] | .name'
+          )" || { echo "::warning::Could not list releases; skipping prune"; exit 0; }
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            echo "Deleting old weekly release + tag: $tag"
+            gh release delete "$tag" --yes --cleanup-on-delete \
+              || echo "::warning::Failed to delete $tag; continuing"
+          done <<< "$old"
+          echo "Remaining releases:"
+          gh release list --limit 20 || true
