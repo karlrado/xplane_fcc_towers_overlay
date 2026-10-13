@@ -49,9 +49,9 @@ beside it, via Google Maps):
 
 1. Download the latest `FCC_Towers-<version>.zip` from the [GitHub
    releases](../../releases).
-2. Unzip the `FCC_Towers` folder into `C:\X-Plane 12\Custom Scenery`.
-3. **Pack order matters:** in
-   `C:\X-Plane 12\Custom Scenery\scenery_packs.ini` (edit with X-Plane
+2. Unzip the `FCC_Towers` folder into your X-Plane `Custom Scenery` folder.
+3. **Pack order matters:** in your
+   `scenery_packs.ini` file (edit with X-Plane
    closed), the `FCC_Towers` entry must sit **above (before)** any
    SimHeaven / X-World Pro / similar overlay scenery. If it is listed below
    them, X-Plane silently fails to load our region files wherever both packs
@@ -81,9 +81,9 @@ python fcc_towers.py
 ```
 
 That's the whole build: it downloads the current FCC registration data
-(~38 MB, cached in `tmp\`), writes `active_antennas.csv`, and produces the
-pack in `output\FCC_Towers\`. Copy that folder into
-`C:\X-Plane 12\Custom Scenery` as above.
+(~38 MB, cached in the `tmp` folder), writes `active_antennas.csv`, and produces the
+pack in the `output` folder. Copy that folder into
+the X-Plane `Custom Scenery` folder as above.
 
 A few useful options (see `python fcc_towers.py -h` for all):
 
@@ -111,10 +111,10 @@ judging styles and heights in flight:
 python fcc_towers.py showroom
 ```
 
-Copy the resulting `output\FCC_TowerShowroom` folder into
-`C:\X-Plane 12\Custom Scenery` (as with the main pack).
+Copy the resulting `FCC_TowerShowroom` folder from the `output` folder into
+the X-Plane `Custom Scenery` folder (as with the main pack).
 
-Depart **KAKO (Akron/Colorado-Yampa)** and fly **north** ~8 nm; the white
+Depart **KAKO (Akron, Colorado)** and fly **north** ~8 nm; the white
 plinth with the object grid appears over the fields. Fly low (~a few hundred
 ft AGL) to judge the short rows. Remove the folder (and its
 `scenery_packs.ini` line) when done. Layout and rationale are in

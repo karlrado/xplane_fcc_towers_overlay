@@ -325,7 +325,7 @@ the same physical files, so they would look identical.
 
 **Viewing:** the tall rows are visible from the AKO runway itself — a nice
 first confirmation that the pack loaded. To judge the objects properly,
-depart **KAKO (Akron/Colorado-Yampa)** and fly **north** about 8 nm (15
+depart **KAKO (Akron, Colorado)** and fly **north** about 8 nm (15
 km). The white plinth rectangle appears over the fields north of the
 airport; the object grid stands on it (row 1 at the south end, row 5's
 300 m radio tower is the landmark). Fly low — a few hundred feet AGL — to
