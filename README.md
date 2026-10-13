@@ -73,7 +73,8 @@ Requires Python 3 (standard library only — no pip installs) and Laminar's
 [DSFTool](https://developer.x-plane.com/tools/xptools/) for the final
 text→binary conversion. DSFTool may be on your PATH, passed with
 `--dsftool <path>`, or built from the vendored source in this repo
-(`sh tools/dsftool/build.sh` — see [tools/dsftool/README.md](tools/dsftool/README.md)
+(`tools/dsftool/build.sh`, in a POSIX shell — e.g. Git Bash or WSL on
+Windows — see [tools/dsftool/README.md](tools/dsftool/README.md)
 for platforms and prebuilt download links).
 
 ```shell

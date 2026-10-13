@@ -65,7 +65,8 @@ Pack build
 3. Each text file is converted to X-Plane 12's native binary (magic
    ``XPLNEDSF``) with Laminar's ``DSFTool --text2dsf``.
 
-The result is a normal scenery pack:
+The result is a normal scenery pack (default: output/FCC_Towers,
+overridable with --out; shown below as <out>):
 
     <out>/
         Earth nav data/
@@ -73,8 +74,9 @@ The result is a normal scenery pack:
             +29-90/+29-96.dsf
             ...
 
-Copy the ``<out>`` folder into ``C:\\X-Plane 12\\Custom Scenery`` and it
-will load as an overlay (the DSF carries ``PROPERTY sim/overlay 1``).
+Copy the ``FCC_Towers`` folder from the ``<out>`` folder into your
+X-Plane ``Custom Scenery`` folder and it will load as an overlay (the
+DSF carries ``PROPERTY sim/overlay 1``).
 
 Placeholder objects
 -------------------
@@ -934,7 +936,8 @@ def find_dsftool(explicit):
       1. an explicit --dsftool <path> (must exist); otherwise
       2. DSFTool.exe / DSFTool on the PATH; otherwise
       3. a binary built from the vendored source in this repo
-         (``sh tools/dsftool/build.sh``).
+         (``tools/dsftool/build.sh`` in a POSIX shell, e.g. WSL on
+         Windows).
     """
     if explicit:
         if os.path.isfile(explicit):
@@ -950,8 +953,9 @@ def find_dsftool(explicit):
     raise SystemExit(
         "Could not find DSFTool.\n"
         "Options:\n"
-        "  1. Build the vendored copy:  sh tools/dsftool/build.sh\n"
-        "     (needs a C/C++ compiler and the zlib dev package; see\n"
+        "  1. Build the vendored copy:  tools/dsftool/build.sh\n"
+        "     (in a POSIX shell -- e.g. Git Bash or WSL on Windows;\n"
+        "      needs a C/C++ compiler and the zlib dev package; see\n"
         "      tools/dsftool/README.md for requirements and prebuilt\n"
         "      download links)\n"
         "  2. Put a DSFTool binary on your PATH, or pass an explicit\n"
@@ -1495,7 +1499,7 @@ def build_pack(csv_path, opts) -> int:
     if not opts.text_only:
         print(f"  dsf total size  : {total_dsf/1024/1024:.1f} MB")
     print(f"\nNext: copy the '{os.path.basename(opts.out)}' folder into")
-    print("      C:\\X-Plane 12\\Custom Scenery  and test in X-Plane 12.")
+    print("      your X-Plane 'Custom Scenery' folder, and test in X-Plane 12.")
     return 1 if (fail and ok == 0) else 0
 
 

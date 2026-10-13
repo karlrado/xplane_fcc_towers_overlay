@@ -29,8 +29,8 @@ via `--source application` if you need the application history.
 The FCC refreshes these public access files **weekly**, so the contents
 (which towers are active, their coordinates and heights) drift over time.
 Rebuilding periodically picks up the changes; the downloaded zip is cached
-in `tmp\` and `--no-download` reuses it when you don't want the data to
-change (e.g. while testing).
+in the `tmp` folder, and `--no-download` reuses it when you don't want the
+data to change (e.g. while testing).
 
 Inside each zip the program uses two files:
 
@@ -112,8 +112,8 @@ The result is a normal scenery pack:
     BUILD_INFO.txt      pack self-description (see below)
 ```
 
-Copy the `<out>` folder into `C:\X-Plane 12\Custom Scenery` and it loads
-as an overlay.
+Copy the `FCC_Towers` folder from the `<out>` folder into your X-Plane
+`Custom Scenery` folder and it loads as an overlay.
 
 ### BUILD_INFO.txt
 
@@ -343,7 +343,8 @@ conversion, and finds it in this order:
 1. an explicit `--dsftool <path>`;
 2. `DSFTool.exe` / `DSFTool` on the PATH;
 3. a binary built from the vendored source in this repo
-   (`sh tools/dsftool/build.sh`).
+   (`tools/dsftool/build.sh`, in a POSIX shell — e.g. Git Bash or WSL
+   on Windows).
 
 The complete vendored xptools source (pinned commit, licensed) lives in
 `tools/dsftool/` — see its README for build requirements, platform support,
