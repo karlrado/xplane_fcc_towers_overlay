@@ -243,10 +243,10 @@ jobs:
           KEEP=${{ vars.KEEP_WEEKLY || '4' }}
           old="$(
             gh release list --limit 500 --json name,createdAt \
-              | jq -r '
+              | jq -r --argjson keep "$KEEP" '
                   [.[] | select(.name | startswith("weekly-"))] as $w
                   | ($w | length) as $n
-                  | (if $n > '"$KEEP"' then $w | sort_by(.createdAt) | .[0:($n-"'$KEEP'")] else [] end)
+                  | (if $n > $keep then $w | sort_by(.createdAt) | .[0:($n-$keep)] else [] end)
                   | .[] | .name'
           )" || { echo "::warning::Could not list releases; skipping prune"; exit 0; }
           while IFS= read -r tag; do
