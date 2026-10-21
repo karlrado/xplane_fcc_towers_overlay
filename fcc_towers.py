@@ -501,6 +501,162 @@ def fetch_csv(args) -> Path:
 
 
 # ===========================================================================
+# Antenna manifest + week-over-week diff
+# ===========================================================================
+# A stable, comparable snapshot of the FCC data a run used: one row per
+# registration number (the T-preferred coordinate), sorted by registration.
+# Written into the pack as antenna_manifest.csv so a later run (or the CI
+# week-over-week report) can compare "what the FCC reported" exactly, without
+# relying on coordinates alone.
+MANIFEST_COLUMNS = [
+    "registration_number", "latitude", "longitude",
+    "height_structure_m", "structure_type", "state",
+]
+MANIFEST_FILENAME = "antenna_manifest.csv"
+
+
+def manifest_rows(active_csv_path):
+    """Normalize the extracted antenna CSV to one row per registration.
+
+    ``active_antennas.csv`` has one row per coordinate record, so a
+    registration with a T + A pair appears twice.  Keep a single row per
+    ``registration_number`` (the T-preferred coordinate when present), project
+    to ``MANIFEST_COLUMNS``, and return them sorted by registration number so
+    the manifest is byte-stable for identical data.
+    """
+    best = {}
+    with open(active_csv_path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            reg = (row.get("registration_number") or "").strip()
+            if not reg:
+                continue
+            cur_type = (row.get("coordinate_type") or "").strip().upper()
+            if reg not in best:
+                best[reg] = (row, cur_type)
+            elif cur_type == "T" and best[reg][1] != "T":
+                best[reg] = (row, cur_type)
+    rows = []
+    for reg in sorted(best):
+        r, _ = best[reg]
+        rows.append([
+            reg,
+            (r.get("latitude") or "").strip(),
+            (r.get("longitude") or "").strip(),
+            (r.get("height_structure_m") or "").strip(),
+            (r.get("structure_type") or "").strip().upper(),
+            (r.get("state") or "").strip().upper(),
+        ])
+    return rows
+
+
+def write_manifest(active_csv_path, dest_path):
+    """Write antenna_manifest.csv (one row per registration, T-preferred)."""
+    rows = manifest_rows(active_csv_path)
+    os.makedirs(os.path.dirname(os.path.abspath(dest_path)), exist_ok=True)
+    with open(dest_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(MANIFEST_COLUMNS)
+        writer.writerows(rows)
+    return len(rows)
+
+
+def _manifest_map(path):
+    """Read a manifest -> {reg: (lat, lon, height_m, structure_type)}."""
+    m = {}
+    if not path or not os.path.isfile(path):
+        return m
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            reg = (row.get("registration_number") or "").strip()
+            if not reg:
+                continue
+            m[reg] = (
+                (row.get("latitude") or "").strip(),
+                (row.get("longitude") or "").strip(),
+                (row.get("height_structure_m") or "").strip(),
+                (row.get("structure_type") or "").strip().upper(),
+            )
+    return m
+
+
+def _near(a, b, eps):
+    try:
+        return abs(float(a) - float(b)) <= eps
+    except (TypeError, ValueError):
+        return a == b
+
+
+def diff_manifests(cur_path, prev_path):
+    """Compare two manifests by registration number.
+
+    Returns a dict with added/removed/changed/unchanged (sorted lists of reg
+    numbers) plus the cur/prev maps (for reporting).
+    """
+    cur = _manifest_map(cur_path)
+    prev = _manifest_map(prev_path)
+    added = sorted(r for r in cur if r not in prev)
+    removed = sorted(r for r in prev if r not in cur)
+    changed, unchanged = [], []
+    for r in sorted(cur):
+        if r not in prev:
+            continue
+        c, p = cur[r], prev[r]
+        if (not _near(c[0], p[0], 1e-6) or not _near(c[1], p[1], 1e-6)
+                or not _near(c[2], p[2], 0.05) or c[3] != p[3]):
+            changed.append(r)
+        else:
+            unchanged.append(r)
+    return {"cur": cur, "prev": prev, "added": added, "removed": removed,
+            "changed": changed, "unchanged": unchanged}
+
+
+def format_diff_report(diff, prior_label, max_list=200):
+    """Render the week-over-week report as text (for BUILD_INFO.txt/stdout)."""
+    cur, prev = diff["cur"], diff["prev"]
+    L = [
+        f"## Week-over-week FCC changes (vs {prior_label})",
+        f"  current: {len(cur)} registrations   "
+        f"previous: {len(prev)} registrations",
+        f"  added: {len(diff['added'])}   removed: {len(diff['removed'])}   "
+        f"changed: {len(diff['changed'])}   "
+        f"unchanged: {len(diff['unchanged'])}",
+    ]
+
+    def emit(title, regs, m, sign):
+        if not regs:
+            return
+        L.append("")
+        L.append(f"  {title}:")
+        for reg in regs[:max_list]:
+            lat, lon, h, stype = m[reg]
+            L.append(f"    {sign} {reg}  {lat},{lon}  H={h} m  {stype}")
+        if len(regs) > max_list:
+            L.append(f"    ... and {len(regs) - max_list} more")
+
+    def changed_line(reg):
+        c, p = cur[reg], prev[reg]
+        bits = []
+        if not _near(c[0], p[0], 1e-6) or not _near(c[1], p[1], 1e-6):
+            bits.append(f"pos {p[0]},{p[1]} -> {c[0]},{c[1]}")
+        if not _near(c[2], p[2], 0.05):
+            bits.append(f"height {p[2]} m -> {c[2]} m")
+        if c[3] != p[3]:
+            bits.append(f"type {p[3]} -> {c[3]}")
+        return f"    ~ {reg}  " + ", ".join(bits)
+
+    emit("added", diff["added"], cur, "+")
+    emit("removed", diff["removed"], prev, "-")
+    if diff["changed"]:
+        L.append("")
+        L.append("  changed:")
+        for reg in diff["changed"][:max_list]:
+            L.append(changed_line(reg))
+        if len(diff["changed"]) > max_list:
+            L.append(f"    ... and {len(diff['changed']) - max_list} more")
+    return "\n".join(L)
+
+
+# ===========================================================================
 # Object selection (FCC structure_type + height -> X-Plane object)
 # ===========================================================================
 # Object sources (stock library; heights verified by measuring the OBJ
@@ -1696,7 +1852,7 @@ def main(argv=None) -> int:
         print(__doc__.strip("\n"))
         return 0
     # Default command: build.
-    if not argv or argv[0] not in ("build", "showroom", "csv",
+    if not argv or argv[0] not in ("build", "showroom", "csv", "diff",
                                    "-h", "--help"):
         argv = ["build"] + argv
 
@@ -1730,6 +1886,23 @@ def main(argv=None) -> int:
     pc.add_argument("--csv-out", default="active_antennas.csv",
                     help="where to write the CSV (default: active_antennas.csv)")
 
+    pd = sub.add_parser(
+        "diff",
+        help="compare two antenna manifests and report what changed")
+    pd.add_argument("--current", required=True,
+                    help="the current antenna_manifest.csv (required)")
+    pd.add_argument("--previous", default="",
+                    help="a prior antenna_manifest.csv to compare against")
+    pd.add_argument("--label", default="",
+                    help="label for the prior manifest in the report "
+                         "(default: its file name)")
+    pd.add_argument("--max-list", type=int, default=200, dest="max_list",
+                    help="max registrations to list per category "
+                         "(default: 200)")
+    pd.add_argument("--out", default="",
+                    help="write the report to this file "
+                         "(default: print to stdout)")
+
     ap.epilog = _terse_epilog(sub)
     args = ap.parse_args(argv)
 
@@ -1744,6 +1917,25 @@ def main(argv=None) -> int:
         fetch_csv(args)
         return 0
 
+    if args.command == "diff":
+        cur_path = args.current
+        if args.previous and os.path.isfile(args.previous):
+            diff = diff_manifests(cur_path, args.previous)
+            label = args.label or os.path.basename(args.previous)
+            report = format_diff_report(diff, label,
+                                        max_list=args.max_list)
+        else:
+            report = "## Week-over-week FCC changes\n  (no prior manifest " \
+                     "to compare against)"
+        if args.out:
+            os.makedirs(os.path.dirname(os.path.abspath(args.out))
+                        or ".", exist_ok=True)
+            with open(args.out, "w", encoding="utf-8") as f:
+                f.write(report + "\n")
+        else:
+            print(report)
+        return 0
+
     if args.command == "showroom":
         csv_path = write_showroom_csv(args.csv)
         # The showroom never reads the additional-sites supplement (the
@@ -1755,7 +1947,12 @@ def main(argv=None) -> int:
     # build
     csv_path = fetch_csv(args)
     args.csv = str(csv_path)
-    return build_pack(str(csv_path), args)
+    rc = build_pack(str(csv_path), args)
+    if rc == 0 and not args.dry_run:
+        manifest_path = os.path.join(str(args.out), MANIFEST_FILENAME)
+        n = write_manifest(str(csv_path), manifest_path)
+        log(f"Manifest written: {n} registration(s) -> {manifest_path}")
+    return rc
 
 
 if __name__ == "__main__":
