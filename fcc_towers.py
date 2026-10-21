@@ -1032,6 +1032,57 @@ def load_additional_sites(path):
     return sites
 
 
+def load_excluded_sites(path):
+    """Read the curated ``excluded_sites.csv`` blacklist.
+
+    Columns: ``registration_number`` (required, the match key) and ``reason``
+    (free text, optional).  A listed registration number is removed from the
+    pack, so a bad/phantom FCC entry (e.g. a tower the registry says is at a
+    runway end where none exists) is not drawn.
+
+    Matching is by ``registration_number`` -- the FCC's stable identity for a
+    structure -- deliberately NOT by coordinate, so the exclusion keeps working
+    even if the FCC later corrects the reported position.  Missing file = no
+    exclusions.  Returns ``(excluded_set, entries)`` where ``entries`` is a
+    list of ``(reg, reason)`` in file order (used for reporting).
+    """
+    excluded = set()
+    entries = []
+    if not os.path.isfile(path):
+        return excluded, entries
+    with open(path, newline="") as f:
+        lines = [ln for ln in f
+                 if ln.strip() and not ln.lstrip().startswith("#")]
+    for row in csv.DictReader(lines):
+        reg = (row.get("registration_number") or "").strip()
+        if not reg:
+            continue
+        reason = (row.get("reason") or "").strip()
+        excluded.add(reg)
+        entries.append((reg, reason))
+    return excluded, entries
+
+
+def report_excluded(entries, all_regs, rows_removed):
+    """Info-level report of the curated blacklist (excluded_sites.csv).
+
+    Flags any listed registration that was not found in the current FCC data
+    (so there was nothing to remove -- e.g. the FCC fixed or dropped the
+    entry), and prints a one-line summary of how many were applied.
+    """
+    if not entries:
+        return
+    not_applied = [e for e in entries if e[0] not in all_regs]
+    for reg, reason in not_applied:
+        note = f" -- {reason}" if reason else ""
+        print(f"  [excluded_sites] reg {reg} not found in the FCC data, "
+              f"nothing to remove (data may have changed){note}")
+    applied = len(entries) - len(not_applied)
+    print(f"  excluded sites  : {applied} removed ({rows_removed} row(s) "
+          f"dropped), {len(not_applied)} not found in data "
+          f"({len(entries)} listed in excluded_sites.csv)")
+
+
 # ===========================================================================
 # Showroom grid (object-style gallery near Akron, CO)
 # ===========================================================================
@@ -1220,16 +1271,25 @@ def build_pack(csv_path, opts) -> int:
     (out, min_height, max_height, state, max_objects, object, radio_only,
     plinth_z, plinth_margin, plinth_texture, text_only, keep_text, dry_run,
     exclude_radius_ft, no_exclude, exclude_min_height, workers, dsftool,
-    additional_sites, no_additional_sites, release_tag).
+    additional_sites, no_additional_sites, excluded_sites,
+    no_excluded_sites, release_tag).
     """
     forced_family = opts.object if opts.object in FAMILIES else None
     states = {s.strip().upper() for s in opts.state.split(",") if s.strip()}
+
+    # ---- curated blacklist (excluded_sites.csv) --------------------------
+    # Bad/phantom FCC entries removed by registration number.  Matched by reg
+    # (not coordinate) so a later FCC position correction still applies.
+    excluded_regs, excluded_entries = (set(), [])
+    if not getattr(opts, "no_excluded_sites", False):
+        excluded_regs, excluded_entries = load_excluded_sites(opts.excluded_sites)
 
     # ---- read + group ----------------------------------------------------
     regions = {}          # sub_name -> dict(props=..., placements=[(lon,lat,path,h)])
     big_of = {}           # sub_name -> big_name
     total = kept = skipped = 0
     deduped = 0
+    excluded_applied = 0
     radio_skipped = 0
     type_hist = {}
     suppressed_hist = {}
@@ -1242,10 +1302,14 @@ def build_pack(csv_path, opts) -> int:
     # below can place exactly one object per registration at the right point.
     keeper = {}    # reg -> (lat, lon) to place
     keeper_is_T = {}  # reg -> True once the keeper came from a 'T' row
+    all_regs = set()   # every registration number present in the CSV
     with open(csv_path, newline="") as f:
         for row in csv.DictReader(f):
             reg = (row.get("registration_number") or "").strip()
             if not reg:
+                continue
+            all_regs.add(reg)
+            if reg in excluded_regs:
                 continue
             lat = _f(row.get("latitude"))
             lon = _f(row.get("longitude"))
@@ -1294,6 +1358,9 @@ def build_pack(csv_path, opts) -> int:
             # registration number.
             reg = (row.get("registration_number") or "").strip()
             dedup_key = reg if reg else (lat, lon)
+            if reg and reg in excluded_regs:
+                excluded_applied += 1
+                continue
             if dedup_key in seen:
                 deduped += 1
                 continue
@@ -1383,7 +1450,9 @@ def build_pack(csv_path, opts) -> int:
               f"z = {opts.plinth_z:.1f} m MSL, texture {opts.plinth_texture}")
 
     if opts.dry_run:
-        print(f"[dry-run] total={total} kept={kept} skipped={skipped} deduped={deduped}")
+        print(f"[dry-run] total={total} kept={kept} skipped={skipped} "
+              f"deduped={deduped} excluded={excluded_applied}")
+        report_excluded(excluded_entries, all_regs, excluded_applied)
         print(f"[dry-run] additional sites: {additional_sites_placed} "
               f"placements, {sum(len(v) for v in site_boxes.values())} site boxes")
         print(f"[dry-run] sub-regions={n_regions}  "
@@ -1491,6 +1560,7 @@ def build_pack(csv_path, opts) -> int:
         print(f"  additional sites: {additional_sites_placed} placements, "
               f"{sum(len(v) for v in site_boxes.values())} site boxes "
               f"({', '.join(s['name'] for s in additional if s['name'])[:120]})")
+    report_excluded(excluded_entries, all_regs, excluded_applied)
     if suppressed_hist:
         print(f"  suppressed types: {sum(suppressed_hist.values()):,} "
               f"({', '.join(sorted(suppressed_hist))})")
@@ -1576,6 +1646,13 @@ def _add_build_options(p, default_out,
                         "sites)")
     p.add_argument("--no-additional-sites", action="store_true",
                    help="ignore the additional-sites supplement entirely")
+    p.add_argument("--excluded-sites",
+                   default=str(HERE / "excluded_sites.csv"),
+                   help="curated blacklist of FCC registration numbers to "
+                        "omit from the pack (default: excluded_sites.csv; "
+                        "missing file = no exclusions)")
+    p.add_argument("--no-excluded-sites", action="store_true",
+                   help="ignore the excluded-sites blacklist entirely")
     p.add_argument("--workers", type=int, default=6,
                    help="parallel DSFTool conversions (default 6)")
     p.add_argument("--dsftool", default="", help="path to DSFTool")

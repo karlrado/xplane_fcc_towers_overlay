@@ -1,0 +1,16 @@
+# Curated blacklist of FCC antenna registrations to omit from the pack.
+#
+# Matched by registration_number -- the FCC's stable identity for a
+# structure -- deliberately NOT by coordinate, so the exclusion keeps working
+# even if the FCC later corrects the reported position of the site.
+#
+# Columns:
+#   registration_number : required, the FCC registration number to remove
+#   reason             : optional, free text explaining why it is excluded
+#
+# Blank lines and lines starting with '#' are ignored.  If a listed
+# registration number is not present in the current FCC data, the build prints
+# an info-level note that it could not be applied (e.g. the FCC fixed or
+# dropped the entry) and continues.
+registration_number,reason
+1266023,"KFHR Friday Harbor WA - no tower exists here per on-site 24h webcam + Google street view; phantom/stale FCC entry at the very end of a runway (48.5268,-123.0249)"
