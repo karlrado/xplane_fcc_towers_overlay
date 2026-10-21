@@ -1606,10 +1606,7 @@ def _add_data_options(p):
                    help="where downloaded zips are cached (default: tmp/)")
 
 
-def _add_build_options(p, default_out,
-                       default_csv="active_antennas.csv"):
-    p.add_argument("--csv", default=default_csv,
-                   help=f"input CSV (default: {default_csv})")
+def _add_build_options(p, default_out):
     p.add_argument("--out", default=str(default_out),
                    help=f"output scenery-pack folder (default: {default_out})")
     p.add_argument("--min-height", type=float, default=0.0,
@@ -1716,14 +1713,15 @@ def main(argv=None) -> int:
     pb.add_argument("--csv-out", default="active_antennas.csv",
                     help="where to write the downloaded CSV (default: "
                          "active_antennas.csv)")
-    _add_build_options(pb, HERE / "output" / "FCC_Towers",
-                       default_csv="active_antennas.csv")
+    _add_build_options(pb, HERE / "output" / "FCC_Towers")
 
     ps = sub.add_parser("showroom",
                         help="build the FCC_TowerShowroom object gallery "
                              "(no FCC download)")
-    _add_build_options(ps, HERE / "output" / "FCC_TowerShowroom",
-                       default_csv="showroom_antennas.csv")
+    _add_build_options(ps, HERE / "output" / "FCC_TowerShowroom")
+    ps.add_argument("--csv", default="showroom_antennas.csv",
+                    help="where to write the generated showroom gallery CSV "
+                         "(default: showroom_antennas.csv)")
 
     pc = sub.add_parser("csv",
                         help="download fresh FCC data and write the CSV "
