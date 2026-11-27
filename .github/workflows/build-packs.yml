@@ -252,7 +252,7 @@ jobs:
           while IFS= read -r tag; do
             [ -z "$tag" ] && continue
             echo "Deleting old weekly release + tag: $tag"
-            gh release delete "$tag" --yes --cleanup-on-delete \
+            gh release delete "$tag" --yes --cleanup-tag \
               || echo "::warning::Failed to delete $tag; continuing"
           done <<< "$old"
           echo "Remaining releases:"
